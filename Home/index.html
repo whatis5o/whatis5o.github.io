@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Page - AfriStay</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://fonts.googleapis.com/css2?family=Oleo+Script+Swash+Caps:wght@400;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/Style/style.css">
+    <link rel="stylesheet" href="/Style/index.css">
+</head>
+<body>
+    <nav id="navbar">
+        <div class="logo-area">
+            <a href="index.html"><h1>AfriStay</h1></a>
+        </div>
+
+        <div class="nav-wrapper" id="navWrapper">
+            <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
+
+            <div class="nav-center">
+                <ul class="nav-links">
+                    <li><a href="Home/" class="active">Home</a></li>
+                    <li><a href="Listings/">Real Estate</a></li>
+                    <li><a href="Vehicle/">Vehicles</a></li>
+                    <li><a href="Contact/">Contact</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-right">
+                <a href="#" class="icon-link"><i class="fa-regular fa-heart"></i></a>
+                
+                <button id="signInBtn" class="signin-btn">Sign In</button>
+                <a id="userIcon" href="profile.html" class="icon-link hidden">
+                    <i class="fa-regular fa-circle-user"></i>
+                </a>
+            </div>
+        </div>
+
+        <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Experience Rwanda. Stay Authentically.</h1>
+            <p>Unique homes and stays across Rwanda's most loved destinations.</p>
+            <div class="hero-btns">
+                <a href="#" class="btn btn-primary">Book Now</a>
+                <a href="#" class="btn btn-outline">Explore More</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="properties-carousel-section">
+        <div class="carousel-container">
+
+            <!-- Section Header -->
+            <div class="section-header">
+                <div class="section-left">
+                    <h2>Featured Properties</h2>
+                    <p>Discover handpicked stays across Rwanda</p>
+                </div>
+                <div class="carousel-controls">
+                    <button class="carousel-btn prev-btn" onclick="slideCarousel(-1)">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button class="carousel-btn next-btn" onclick="slideCarousel(1)">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Carousel -->
+            <div class="carousel-wrapper">
+                <div class="carousel-track" id="carouselTrack">
+
+                    <!-- Card 1 -->
+                    <div class="property-card">
+                        <div class="card-image">
+                            <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80" alt="Modern Villa">
+                            <div class="card-badge">Featured</div>
+                            <div class="card-heart">
+                                <i class="fa-regular fa-heart"></i>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Modern Lake View Villa</h3>
+                            <div class="card-location">
+                                <i class="fa-solid fa-location-dot"></i>
+                                <span>Rubavu, Western Province</span>
+                            </div>
+                            <div class="card-features">
+                                <div class="feature">
+                                    <i class="fa-solid fa-bed"></i>
+                                    <span>4 Beds</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fa-solid fa-bath"></i>
+                                    <span>3 Baths</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fa-solid fa-maximize"></i>
+                                    <span>2,400 sqft</span>
+                                </div>
+                            </div>
+                            <div class="card-price">
+                                $450<span>/night</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 2 -->
+                    <div class="property-card">
+                        <div class="card-image">
+                            <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80" alt="Urban Apartment">
+                            <div class="card-badge">New</div>
+                            <div class="card-heart">
+                                <i class="fa-regular fa-heart"></i>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Downtown Urban Apartment</h3>
+                            <div class="card-location">
+                                <i class="fa-solid fa-location-dot"></i>
+                                <span>Kigali, City Center</span>
+                            </div>
+                            <div class="card-features">
+                                <div class="feature">
+                                    <i class="fa-solid fa-bed"></i>
+                                    <span>2 Beds</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fa-solid fa-bath"></i>
+                                    <span>2 Baths</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fa-solid fa-maximize"></i>
+                                    <span>1,200 sqft</span>
+                                </div>
+                            </div>
+                            <div class="card-price">
+                                $280<span>/night</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 3 -->
+                    <div class="property-card">
+                        <div class="card-image">
+                            <img src="https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=800&q=80" alt="Countryside House">
+                            <div class="card-badge">Hot Deal</div>
+                            <div class="card-heart">
+                                <i class="fa-regular fa-heart"></i>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Peaceful Countryside House</h3>
+                            <div class="card-location">
+                                <i class="fa-solid fa-location-dot"></i>
+                                <span>Musanze, Northern Province</span>
+                            </div>
+                            <div class="card-features">
+                                <div class="feature">
+                                    <i class="fa-solid fa-bed"></i>
+                                    <span>3 Beds</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fa-solid fa-bath"></i>
+                                    <span>2 Baths</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fa-solid fa-maximize"></i>
+                                    <span>1,800 sqft</span>
+                                </div>
+                            </div>
+                            <div class="card-price">
+                                $320<span>/night</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 4 -->
+                    <div class="property-card">
+                        <div class="card-image">
+                            <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80" alt="Luxury Estate">
+                            <div class="card-badge">Premium</div>
+                            <div class="card-heart">
+                                <i class="fa-regular fa-heart"></i>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Luxury Hilltop Estate</h3>
+                            <div class="card-location">
+                                <i class="fa-solid fa-location-dot"></i>
+                                <span>Kigali Heights</span>
+                            </div>
+                            <div class="card-features">
+                                <div class="feature">
+                                    <i class="fa-solid fa-bed"></i>
+                                    <span>5 Beds</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fa-solid fa-bath"></i>
+                                    <span>4 Baths</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fa-solid fa-maximize"></i>
+                                    <span>3,200 sqft</span>
+                                </div>
+                            </div>
+                            <div class="card-price">
+                                $650<span>/night</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 5 -->
+                    <div class="property-card">
+                        <div class="card-image">
+                            <img src="https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80" alt="Cozy Cottage">
+                            <div class="card-badge">Popular</div>
+                            <div class="card-heart">
+                                <i class="fa-regular fa-heart"></i>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Cozy Garden Cottage</h3>
+                            <div class="card-location">
+                                <i class="fa-solid fa-location-dot"></i>
+                                <span>Nyanza, Southern Province</span>
+                            </div>
+                            <div class="card-features">
+                                <div class="feature">
+                                    <i class="fa-solid fa-bed"></i>
+                                    <span>2 Beds</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fa-solid fa-bath"></i>
+                                    <span>1 Bath</span>
+                                </div>
+                                <div class="feature">
+                                    <i class="fa-solid fa-maximize"></i>
+                                    <span>950 sqft</span>
+                                </div>
+                            </div>
+                            <div class="card-price">
+                                $180<span>/night</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="slider-wrapper">
+
+        <div class="container">
+
+            <div class="slide">
+
+                
+                <div class="item" style="background-image: url(https://i.ibb.co/qCkd9jS/img1.jpg);">
+                    <div class="content">
+                        <div class="name">Kigali</div>
+                        <div class="des">A vibrant, hilly, and modernizing city serving as the nation's economic, cultural, and transport hub. It is known for its lush green, orderly streets, and bustling markets like Nyamirambo. </div>
+                        <button>See More</button>
+                    </div>
+                </div>
+                <div class="item" style="background-image: url(https://i.ibb.co/jrRb11q/img2.jpg);">
+                    <div class="content">
+                        <div class="name">Musanze</div>
+                        <div class="des">A scenic town in northern Rwanda, known for its mountainous landscapes and proximity to the Virunga National Park. It is a gateway to exploring the region's rich biodiversity and cultural heritage.</div>
+                        <button>See More</button>
+                    </div>
+                </div>
+                <div class="item" style="background-image: url(https://i.ibb.co/NSwVv8D/img3.jpg);">
+                    <div class="content">
+                        <div class="name">Rubavu</div>
+                        <div class="des">Popular resort town with sandy beaches and palm-lined streets. It is less than an hour from the gorilla trekking base, making it a popular spot for relaxation after safaris. </div>
+                        <button>See More</button>
+                    </div>
+                </div>
+                <div class="item" style="background-image: url(https://i.ibb.co/Bq4Q0M8/img4.jpg);">
+                    <div class="content">
+                        <div class="name">Huye</div>
+                        <div class="des">Considered the intellectual and cultural heart of Rwanda. It is home to the National University of Rwanda and the Ethnographic Museum (National Museum of Rwanda).</div>
+                        <button>See More</button>
+                    </div>
+                </div>
+                <div class="item" style="background-image: url(https://i.ibb.co/jTQfmTq/img5.jpg);">
+                    <div class="content">
+                        <div class="name">Nyanza</div>
+                        <div class="des">The former, historic capital of the Rwandan Kingdom. It is known for its rich cultural history, specifically the King's Palace Museum (Nyanza Royal Palace). </div>
+                        <button>See More</button>
+                    </div>
+                </div>
+                <div class="item" style="background-image: url(https://i.ibb.co/RNkk6L0/img6.jpg);">
+                    <div class="content">
+                        <div class="name">Nyagatare</div>
+                        <div class="des"> Known for its role in agriculture and cattle farming in a generally warmer region of the country. </div>
+                        <button>See More</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="button">
+                <button class="prev"><i class="fa-solid fa-arrow-left"></i></button>
+                <button class="next"><i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+        </div>
+    </section>
+
+    <section class="why-section">
+        <div class="why-grid">
+
+            <!-- LEFT: Heading + Features -->
+            <div class="why-left">
+                <span class="section-tag">Why AfriStay</span>
+                <h2>Your Trusted Home Away From Home</h2>
+                <p class="subtitle">We connect travellers with verified, authentic stays across Rwanda — with care and transparency at every step.</p>
+
+                <div class="features-list">
+                    <div class="feature-item">
+                        <div class="feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                        <div class="feature-text">
+                            <h4>Property Management</h4>
+                            <p>Every listing is verified and managed to ensure quality, safety, and comfort for every guest.</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                        <div class="feature-text">
+                            <h4>Mortgage Services</h4>
+                            <p>Flexible financing options to help you own a piece of Rwanda's growing real estate market.</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon"><i class="fa-solid fa-compass"></i></div>
+                        <div class="feature-text">
+                            <h4>Currency Network</h4>
+                            <p>Seamless multi-currency transactions so guests from anywhere can book without friction.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CENTER: Image + Badge -->
+            <div class="why-center">
+                <div class="building-img-wrap">
+                    <img src="https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=800&q=80" alt="AfriStay Property">
+
+                    <div class="stat-badge">
+                        <div class="avatar-stack">
+                            <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="">
+                            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="">
+                            <img src="https://randomuser.me/api/portraits/women/68.jpg" alt="">
+                        </div>
+                        <div class="badge-text">
+                            <strong>+3,821 Users</strong>
+                            Highly Satisfied
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: Stats + Partner Logos -->
+            <div class="why-right">
+                <div class="stats-stack">
+                    <div class="stat-item">
+                        <h3>23M</h3>
+                        <p>Highly Satisfied</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3>18K</h3>
+                        <p>Property Sales</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3>4M</h3>
+                        <p>Happy Guests</p>
+                    </div>
+                </div>
+
+                <div class="right-divider"></div>
+
+                <div>
+                    <p class="trusted-label">Trusted by the world's best</p>
+                    <div class="logo-strip">
+                        <div class="logo-item">
+                            <i class="fa-brands fa-spotify"></i>
+                            <span>Spotify</span>
+                        </div>
+                        <div class="logo-item">
+                            <i class="fa-brands fa-dropbox"></i>
+                            <span>Dropbox</span>
+                        </div>
+                        <div class="logo-item">
+                            <i class="fa-brands fa-amazon"></i>
+                            <span>Amazon</span>
+                        </div>
+                        <div class="logo-item">
+                            <i class="fa-brands fa-android"></i>
+                            <span>AMD</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    
+
+</body>
+<script src="/js/script.js"></script>
+<script>
+    let next = document.querySelector('.next')
+    let prev = document.querySelector('.prev')
+
+    next.addEventListener('click', function(){
+        let items = document.querySelectorAll('.item')
+        document.querySelector('.slide').appendChild(items[0])
+    })
+
+    prev.addEventListener('click', function(){
+        let items = document.querySelectorAll('.item')
+        document.querySelector('.slide').prepend(items[items.length - 1]) // here the length of items = 6
+    })
+
+    let currentSlide = 0;
+    const track = document.getElementById('carouselTrack');
+    const cards = document.querySelectorAll('.property-card');
+    const prevBtn = document.querySelector('.prev-btn');
+    const nextBtn = document.querySelector('.next-btn');
+
+    function getVisibleCards() {
+        const width = window.innerWidth;
+        if (width >= 1024) return 3;
+        if (width >= 768) return 2;
+        return 1;
+    }
+
+    function slideCarousel(direction) {
+        const visibleCards = getVisibleCards();
+        const maxSlide = cards.length - visibleCards;
+        
+        currentSlide += direction;
+        
+        if (currentSlide < 0) currentSlide = 0;
+        if (currentSlide > maxSlide) currentSlide = maxSlide;
+        
+        const cardWidth = cards[0].offsetWidth;
+        const gap = 25;
+        const offset = currentSlide * (cardWidth + gap);
+        
+        track.style.transform = `translateX(-${offset}px)`;
+        
+        updateButtons(maxSlide);
+    }
+
+    function updateButtons(maxSlide) {
+        prevBtn.disabled = currentSlide === 0;
+        nextBtn.disabled = currentSlide >= maxSlide;
+    }
+
+    // Initialize buttons
+    updateButtons(cards.length - getVisibleCards());
+
+    // Update on resize
+    window.addEventListener('resize', () => {
+        currentSlide = 0;
+        track.style.transform = 'translateX(0)';
+        updateButtons(cards.length - getVisibleCards());
+    });
+
+    // Touch swipe support for mobile
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    track.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    });
+
+    track.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    });
+
+    function handleSwipe() {
+        if (touchEndX < touchStartX - 50) {
+            slideCarousel(1); // Swipe left
+        }
+        if (touchEndX > touchStartX + 50) {
+            slideCarousel(-1); // Swipe right
+        }
+    }
+
+</script>
