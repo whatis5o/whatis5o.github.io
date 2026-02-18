@@ -20,29 +20,22 @@
 
         <div class="nav-wrapper" id="navWrapper">
             <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
-
             <div class="nav-center">
                 <ul class="nav-links">
-                    <li><a href="Home/" class="active">Home</a></li>
-                    <li><a href="Listings/">Real Estate</a></li>
-                    <li><a href="Vehicle/">Vehicles</a></li>
-                    <li><a href="Contact/">Contact</a></li>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="listing.html">Real Estate</a></li>
+                    <li><a href="vehicle.html">Vehicles</a></li>
+                    <li><a href="contact.html" class="active">Contact</a></li>
                 </ul>
             </div>
-
             <div class="nav-right">
                 <a href="#" class="icon-link"><i class="fa-regular fa-heart"></i></a>
-                
-                <button id="signInBtn" class="signin-btn">Sign In</button>
-                <a id="userIcon" href="profile.html" class="icon-link hidden">
-                    <i class="fa-regular fa-circle-user"></i>
-                </a>
+                <a href="auth.html" id="auth-btn" class="signin-btn">Sign In</a> 
             </div>
         </div>
-
         <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
     </nav>
-
+    
     <section class="hero">
         <div class="hero-content">
             <h1>Experience Rwanda. Stay Authentically.</h1>
@@ -499,5 +492,6 @@
             slideCarousel(-1); // Swipe right
         }
     }
+
 
 </script>
