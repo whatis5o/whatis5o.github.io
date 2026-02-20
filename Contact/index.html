@@ -4,45 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contact Us - AfriStay</title>
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Oleo+Script+Swash+Caps:wght@400;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
-    <link rel="stylesheet" href="/Style/style.css">
-    <link rel="stylesheet" href="/Style/contact.css">
+    <link rel="stylesheet" href="Style/style.css">
+    <link rel="stylesheet" href="Style/contact.css">
 </head>
 <body>
-    <nav id="navbar">
-        <div class="logo-area">
-            <a href="/"><h1>AfriStay</h1></a>
-        </div>
-
-        <div class="nav-wrapper" id="navWrapper">
-            <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
-
-            <div class="nav-center">
-                <ul class="nav-links">
-                    <li><a href="/">Home</a></li>
-                    <li><a href="/Listings">Real Estate</a></li>
-                    <li><a href="/Vehicle">Vehicles</a></li>
-                    <li><a href="/Contact" class="active">Contact</a></li>
-                </ul>
+        <nav id="navbar">
+            <div class="logo-area">
+                <a href="/"><h1>AfriStay</h1></a>
             </div>
-
-            <div class="nav-right">
-                <a href="#" class="icon-link"><i class="fa-regular fa-heart"></i></a>
-                
-                <button id="signInBtn" class="signin-btn">Sign In</button>
-                <a id="userIcon" href="profile.html" class="icon-link hidden">
-                    <i class="fa-regular fa-circle-user"></i>
-                </a>
+    
+            <div class="nav-wrapper" id="navWrapper">
+                <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
+                <div class="nav-center">
+                    <ul class="nav-links">
+                        <li><a href="/" class = "active">Home</a></li>
+                        <li><a href="/Listings">Listings</a></li>
+                        <li><a href="/About">About</a></li>
+                        <li><a href="/Contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="nav-right">
+                    <a href="#" class="icon-link"><i class="fa-regular fa-heart"></i></a>
+                    <a href="/Auth" id="auth-btn" class="signin-btn">Sign In</a> 
+                </div>
             </div>
-        </div>
-
-        <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
-    </nav>
-
-    <script src="/js/script.js"></script>
+            <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
+        </nav>
 
     <div class="box">
         <div class="box-left">
@@ -55,50 +45,19 @@
 
         <div class="box-right">
             <h1 class="orange desktop-touch">touch</h1>
-            
             <form id="contactForm">
-                <input type="text" placeholder="Name..." name="name" id="name" required>
-                <input type="email" placeholder="Email..." name="email" id="email" required>
-                <textarea placeholder="Message..." name="message" rows="4" id="message" required></textarea>
+                <input type="text" placeholder="Name..." id="contactName" required>
+                <input type="email" placeholder="Email..." id="contactEmail" required>
+                <textarea placeholder="Message..." rows="4" id="contactMessage" required></textarea>
                 <input type="submit" value="Submit">
             </form>
         </div>
     </div>
 
-    <script>
-        const contactForm = document.getElementById('contactForm');
-
-        contactForm.addEventListener('submit', async (e) => {
-            e.preventDefault(); // This stops the page from refreshing!
-
-            // 1. Grab the data from the inputs
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
-            const message = document.getElementById('message').value;
-
-            console.log("Attempting to send to Python...");
-
-            // 2. Build the URL to your local Python server (FastAPI)
-            const url = `http://127.0.0.1:8000/send_message?name=${name}&email=${email}&message=${message}`;
-
-            try {
-                // 3. Send the request
-                const response = await fetch(url, { method: 'GET' }); 
-                const result = await response.json();
-
-                if (response.ok) {
-                    alert("Message sent to Supabase via Python!");
-                    contactForm.reset(); // Clears the form
-                } else {
-                    alert("Error: " + result.detail);
-                }
-            } catch (error) {
-                console.error("Could not connect to Python server:", error);
-                alert("Is your Python server running? (uvicorn main:app)");
-            }
-        });
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script src="js/script.js"></script>
+    <script src="js/contact.js"></script>
 </body>
 
 </html>
-
