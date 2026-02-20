@@ -1,107 +1,87 @@
-// auth.js
-(function () {
-    const toggleSignin = document.getElementById('btn-signin');
-    const toggleSignup = document.getElementById('btn-signup');
-    const nameField = document.getElementById('nameField');
-    const authForm = document.getElementById('authForm');
-    const authError = document.getElementById('authError');
-    const authSuccess = document.getElementById('authSuccess');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - AfriStay</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Oleo+Script+Swash+Caps:wght@400;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="Style/style.css">
+    <link rel="stylesheet" href="Style/auth.css">
+</head>
+<body>
 
-    let mode = 'signin'; // or 'signup'
+        <nav id="navbar">
+            <div class="logo-area">
+                <a href="/"><h1>AfriStay</h1></a>
+            </div>
+    
+            <div class="nav-wrapper" id="navWrapper">
+                <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
+                <div class="nav-center">
+                    <ul class="nav-links">
+                        <li><a href="/" class = "active">Home</a></li>
+                        <li><a href="/Listings">Listings</a></li>
+                        <li><a href="/About">About</a></li>
+                        <li><a href="/Contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="nav-right">
+                    <a href="#" class="icon-link"><i class="fa-regular fa-heart"></i></a>
+                    <a href="/Auth" id="auth-btn" class="signin-btn">Sign In</a> 
+                </div>
+            </div>
+            <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
+        </nav>
 
-    function showError(msg) {
-        if (authError) { authError.style.display = 'block'; authError.innerText = msg; }
-        if (authSuccess) { authSuccess.style.display = 'none'; authSuccess.innerText = ''; }
-    }
-    function showSuccess(msg) {
-        if (authSuccess) { authSuccess.style.display = 'block'; authSuccess.innerText = msg; }
-        if (authError) { authError.style.display = 'none'; authError.innerText = ''; }
-    }
+    <div class="box auth-box">
+        
+        <div class="box-left">
+            <div class="title-group">
+                <h1 class="white">Join Us!</h1>
+                <h1 class="white"></h1>
+            
+            </div>
+            <p class="auth-desc">Access your bookings, favorites, and more.</p>
+            <i class="fa-solid fa-key big-icon"></i>
+        </div>
 
-    window.toggleAuth = (m) => {
-        mode = m;
-        if (mode === 'signup') {
-        nameField.classList.remove('hidden');
-        toggleSignup.classList.add('active');
-        toggleSignin.classList.remove('active');
-        authForm.querySelector('.form-title').innerText = 'Sign Up';
-        } else {
-        nameField.classList.add('hidden');
-        toggleSignin.classList.add('active');
-        toggleSignup.classList.remove('active');
-        authForm.querySelector('.form-title').innerText = 'Sign In';
-        }
-        // clear messages
-        showError('');
-    };
+        <div class="box-right">
+            
+            <div class="auth-toggle">
+                <button id="btn-signin" class="active" onclick="toggleAuth('signin')">Sign In</button>
+                <button id="btn-signup" onclick="toggleAuth('signup')">Sign Up</button>
+            </div>
 
-    // default
-    toggleAuth('signin');
+            <form id="authForm">
+                <h1 class="orange form-title">Sign In</h1>
+                
+                <div id="nameField" class="input-group hidden">
+                    <input type="text" id="fullName" placeholder="Full Name">
+                    <input type="tel" id="phoneNumber" placeholder="+250" style="margin-top: 15px;">
+                </div>
 
-    authForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        showError(''); showSuccess('');
+                <div class="input-group">
+                    <input type="email" id="email" placeholder="Email Address" required>
+                </div>
 
-        const fullName = document.getElementById('fullName')?.value?.trim();
-        const phone = document.getElementById('phoneNumber')?.value?.trim();
-        const email = document.getElementById('email')?.value?.trim();
-        const password = document.getElementById('password')?.value;
+                <div class="input-group">
+                    <input type="password" id="password" placeholder="Password" required>
+                </div>
 
-        if (!email || !password) { showError('Email and password required'); return; }
+                <button type="submit" id="submitBtn">Login</button>
+                
+                <p id="authError" class="error-msg"></p>
+                <p id="authSuccess" class="success-msg"></p>
+            </form>
+        </div>
+    </div>
 
-        const client = window.supabaseClient;
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script src="js/script.js"></script>
+    <script src="js/auth.js"></script>
+</body>
 
-        if (!client) { showError('Supabase not configured'); return; }
-
-        try {
-        if (mode === 'signup') {
-            // Use signUp and attach metadata for profile creation
-            const { data, error } = await client.auth.signUp({
-            email,
-            password,
-            options: {
-                data: { full_name: fullName || null, phone: phone || null }
-            }
-            });
-
-            if (error) {
-            showError(error.message || 'Sign up failed');
-            return;
-            }
-
-            // Success: email confirmation may be required in your Supabase settings
-            showSuccess('Sign up successful. Check your email to confirm then login.');
-        } else {
-            // sign in
-            const { data, error } = await client.auth.signInWithPassword({
-            email,
-            password
-            });
-            if (error) {
-            showError(error.message || 'Sign in failed');
-            return;
-            }
-
-            // Successful login: load profile to detect role, then redirect to admin/dashboard
-            const user = data.user;
-            // Small pause to ensure profile has been created (if auto-create trigger present)
-            setTimeout(async () => {
-            const { data: profile, error: pErr } = await client.from('profiles').select('role').eq('id', user.id).single();
-            const role = (profile && profile.role) || 'user';
-            // Redirect to admin dashboard for demo (single adaptive dashboard)
-            window.location.href = 'dashboard.html';
-            }, 700);
-        }
-        } catch (err) {
-        console.error('Auth error', err);
-        showError('Something went wrong with auth.');
-        }
-    });
-
-    // quick keyboard enter handling
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && document.activeElement && document.activeElement.form === authForm) {
-        authForm.requestSubmit();
-        }
-    });
-})();
+</html>
