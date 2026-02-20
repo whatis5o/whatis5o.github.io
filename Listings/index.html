@@ -3,185 +3,426 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Page - AfriStay</title>
-    
+    <title>Listings - AfriStay</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href="https://fonts.googleapis.com/css2?family=Oleo+Script+Swash+Caps:wght@400;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="/Style/style.css">
-    <link rel="stylesheet" href="/Style/listing.css">
+    <style>
+        :root { --primary: #EB6753; }
+        body { background: #f5f5f5; }
+
+        /* ───── HERO ───── */
+        .hero {
+            min-height: 420px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 55%, #0f3460 100%);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            text-align: center;
+            padding: 120px 24px 80px;
+            position: relative; overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse at 65% 40%, rgba(235,103,83,0.2) 0%, transparent 65%);
+            pointer-events: none;
+        }
+        .hero h1 {
+            font-family: 'Oleo Script Swash Caps', cursive;
+            font-size: 56px; color: #fff;
+            margin-bottom: 12px; position: relative;
+            text-shadow: 0 4px 24px rgba(0,0,0,0.3);
+        }
+        .hero h1 span { color: var(--primary); }
+        .hero p { color: rgba(255,255,255,0.6); font-size: 18px; margin-bottom: 38px; position: relative; }
+        .hero-search {
+            display: flex; align-items: center;
+            background: #fff; border-radius: 50px;
+            padding: 8px 8px 8px 28px;
+            max-width: 600px; width: 100%;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+            position: relative;
+        }
+        .hero-search input {
+            flex: 1; border: none; outline: none;
+            font-size: 15px; font-family: 'Inter', sans-serif;
+            color: #222; background: transparent;
+        }
+        .hero-search button {
+            background: var(--primary); color: #fff; border: none;
+            padding: 12px 28px; border-radius: 40px;
+            font-weight: 700; font-size: 14px; cursor: pointer;
+            transition: all 0.3s; font-family: 'Inter', sans-serif;
+            display: flex; align-items: center; gap: 8px;
+            white-space: nowrap;
+        }
+        .hero-search button:hover { transform: translateY(-1px); filter: drop-shadow(0 5px 15px rgba(235,103,83,0.5)); }
+
+        /* ───── FILTER PILL ───── */
+        .filter-wrap {
+            max-width: 1100px; margin: -28px auto 36px;
+            padding: 0 24px; position: relative; z-index: 10;
+        }
+        .filter-bar {
+            background: #fff; border-radius: 20px;
+            padding: 18px 24px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+        }
+        .cat-toggle { display: flex; background: #f2f2f2; border-radius: 50px; padding: 4px; gap: 0; }
+        .cat-btn {
+            padding: 9px 20px; border-radius: 50px;
+            border: none; background: transparent;
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            color: #666; font-family: 'Inter', sans-serif;
+            display: flex; align-items: center; gap: 7px;
+            transition: all 0.25s; white-space: nowrap;
+        }
+        .cat-btn.active { background: var(--primary); color: #fff; box-shadow: 0 4px 14px rgba(235,103,83,0.35); }
+        .filter-sep { width: 1px; height: 28px; background: #ececec; }
+        .filter-select {
+            padding: 9px 14px; border-radius: 10px;
+            border: 1.5px solid #ebebeb; font-size: 13px;
+            font-family: 'Inter', sans-serif; color: #555;
+            background: #fff; cursor: pointer; outline: none;
+            min-width: 130px; transition: border-color 0.2s;
+        }
+        .filter-select:focus { border-color: var(--primary); }
+        .filter-select:disabled { opacity: 0.38; cursor: not-allowed; }
+        .results-count { margin-left: auto; font-size: 13px; color: #bbb; font-weight: 500; }
+
+        /* ───── GRID SECTION ───── */
+        .explore-section { padding: 0 24px 72px; }
+        .explore-container { max-width: 1100px; margin: 0 auto; }
+        .section-header { margin-bottom: 28px; }
+        .section-header h2 { font-size: 26px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px; }
+        .section-header p { color: #999; font-size: 15px; }
+
+        .properties-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 28px;
+        }
+
+        /* ───── CARDS ───── */
+        .property-card {
+            background: #fff; border-radius: 20px; overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer; display: flex; flex-direction: column;
+            text-decoration: none; color: inherit;
+        }
+        .property-card:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(0,0,0,0.13); }
+        .card-image {
+            position: relative; height: 210px; overflow: hidden;
+            background: #f0f0f0;
+        }
+        .card-image img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s; }
+        .property-card:hover .card-image img { transform: scale(1.06); }
+        .card-no-img { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        .card-badge {
+            position: absolute; top: 14px; left: 14px;
+            background: var(--primary); color: #fff;
+            padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
+        }
+        .cat-label {
+            position: absolute; top: 14px; right: 50px;
+            background: rgba(0,0,0,0.48); backdrop-filter: blur(6px);
+            color: #fff; padding: 4px 10px; border-radius: 20px;
+            font-size: 11px; font-weight: 600;
+        }
+        .card-heart {
+            position: absolute; top: 12px; right: 12px;
+            background: rgba(255,255,255,0.92); backdrop-filter: blur(4px);
+            width: 34px; height: 34px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .card-heart:hover { background: var(--primary); }
+        .card-heart:hover i { color: #fff; }
+        .card-heart i { color: var(--primary); font-size: 14px; transition: color 0.2s; }
+        .avail-strip {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            padding: 5px 14px; font-size: 11px; font-weight: 700; color: #fff; text-align: right;
+        }
+        .avail-strip.available { background: rgba(46,204,113,0.82); }
+        .avail-strip.unavailable, .avail-strip.booked { background: rgba(231,76,60,0.82); }
+
+        .card-content { padding: 18px 20px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+        .card-content h3 { font-size: 17px; font-weight: 700; color: #1a1a1a; line-height: 1.3; }
+        .card-location { display: flex; align-items: center; gap: 6px; color: #888; font-size: 13px; }
+        .card-location i { color: var(--primary); }
+        .card-features { display: flex; gap: 16px; }
+        .feature { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #777; }
+        .feature i { color: var(--primary); font-size: 12px; }
+        .card-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-top: auto; padding-top: 12px; border-top: 1px solid #f5f5f5;
+        }
+        .card-price { font-size: 20px; font-weight: 800; color: var(--primary); }
+        .card-price span { font-size: 13px; font-weight: 400; color: #aaa; }
+        .details-btn {
+            background: var(--primary); color: #fff; border: none;
+            padding: 9px 20px; border-radius: 20px;
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: all 0.3s; font-family: 'Inter', sans-serif;
+        }
+        .details-btn:hover { transform: translateY(-2px); filter: drop-shadow(0 5px 12px rgba(235,103,83,0.4)); }
+
+        /* ───── STATES ───── */
+        .state-box { grid-column: 1/-1; text-align: center; padding: 90px 20px; color: #ccc; }
+        .state-box i { font-size: 52px; margin-bottom: 18px; display: block; opacity: 0.25; }
+        .state-box p { font-size: 16px; }
+
+        /* ───── SKELETON ───── */
+        .skeleton { background: linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 8px; }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        .skel-card { background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+        .skel-img { height: 210px; border-radius: 0; }
+        .skel-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+
+        @media (max-width: 900px) {
+            .hero { padding: 100px 20px 70px; }
+            .hero h1 { font-size: 38px; }
+            .filter-wrap { padding: 0 14px; }
+            .explore-section { padding: 0 14px 50px; }
+            .properties-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+        }
+        @media (max-width: 520px) {
+            .hero h1 { font-size: 30px; }
+            .properties-grid { grid-template-columns: 1fr; }
+            .cat-btn { padding: 8px 14px; font-size: 12px; }
+        }
+    </style>
 </head>
 <body>
-    <nav id="navbar">
-        <div class="logo-area">
-            <a href="/"><h1>AfriStay</h1></a>
+
+        <nav id="navbar">
+            <div class="logo-area">
+                <a href="/"><h1>AfriStay</h1></a>
+            </div>
+    
+            <div class="nav-wrapper" id="navWrapper">
+                <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
+                <div class="nav-center">
+                    <ul class="nav-links">
+                        <li><a href="/" class = "active">Home</a></li>
+                        <li><a href="/Listings/listing.html">Listings</a></li>
+                        <li><a href="/About">About</a></li>
+                        <li><a href="/Contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="nav-right">
+                    <a href="#" class="icon-link"><i class="fa-regular fa-heart"></i></a>
+                    <a href="/Auth" id="auth-btn" class="signin-btn">Sign In</a> 
+                </div>
+            </div>
+            <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
+        </nav>
+
+<!-- HERO -->
+<section class="hero">
+    <h1>Find Your Perfect <span>Stay</span></h1>
+    <p>Real estate &amp; vehicles across Rwanda, all in one place.</p>
+    <div class="hero-search">
+        <input type="text" id="heroSearch" placeholder="Search by title, location...">
+        <button onclick="applyFilters()"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+    </div>
+</section>
+
+<!-- FILTER BAR -->
+<div class="filter-wrap">
+    <div class="filter-bar">
+        <div class="cat-toggle">
+            <button class="cat-btn active" data-cat=""><i class="fa-solid fa-border-all"></i> All</button>
+            <button class="cat-btn" data-cat="real_estate"><i class="fa-solid fa-house"></i> Real Estate</button>
+            <button class="cat-btn" data-cat="vehicle"><i class="fa-solid fa-car"></i> Vehicles</button>
         </div>
+        <div class="filter-sep"></div>
+        <select id="flProvince" class="filter-select" onchange="onProvinceChange()">
+            <option value="">All Provinces</option>
+        </select>
+        <select id="flDistrict" class="filter-select" disabled onchange="onDistrictChange()">
+            <option value="">All Districts</option>
+        </select>
+        <select id="flSector" class="filter-select" disabled onchange="applyFilters()">
+            <option value="">All Sectors</option>
+        </select>
+        <span class="results-count" id="resultsCount"></span>
+    </div>
+</div>
 
-        <div class="nav-wrapper" id="navWrapper">
-            <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
-
-            <div class="nav-center">
-                <ul class="nav-links">
-                    <li><a href="/" >Home</a></li>
-                    <li><a href="/Listings"class="active">Real Estate</a></li>
-                    <li><a href="/Vehicle">Vehicles</a></li>
-                    <li><a href="/Contact">Contact</a></li>
-                </ul>
-            </div>
-
-            <div class="nav-right">
-                <a href="#" class="icon-link"><i class="fa-regular fa-heart"></i></a>
-                
-                <button id="signInBtn" class="signin-btn">Sign In</button>
-                <a id="userIcon" href="profile.html" class="icon-link hidden">
-                    <i class="fa-regular fa-circle-user"></i>
-                </a>
-            </div>
+<!-- GRID -->
+<section class="explore-section">
+    <div class="explore-container">
+        <div class="section-header">
+            <h2 id="gridHeading">All Listings</h2>
+            <p>Find your perfect stay across Rwanda's most beautiful locations</p>
         </div>
+        <div class="properties-grid" id="propertiesGrid"></div>
+    </div>
+</section>
 
-        <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
-    </nav>
-
-    <section class="explore-section">
-        <div class="explore-container">
-
-            <!-- Section Header -->
-            <div class="section-header">
-                <div class="section-left">
-                    <h2>Explore Properties</h2>
-                    <p>Find your perfect stay across Rwanda's most beautiful locations</p>
-                </div>
-                
-            </div>
-
-            <!-- Properties Grid -->
-            <div class="properties-grid">
-
-                <!-- Card 1 -->
-                <div class="property-card">
-                    <div class="card-image">
-                        <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80" alt="Modern Villa">
-                        <div class="card-badge">Featured</div>
-                        <div class="card-heart">
-                            <i class="fa-regular fa-heart"></i>
-                        </div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Modern Lake View Villa</h3>
-                        <div class="card-location">
-                            <i class="fa-solid fa-location-dot"></i>
-                            <span>Rubavu, Western Province</span>
-                        </div>
-                        <div class="card-features">
-                            <div class="feature">
-                                <i class="fa-solid fa-bed"></i>
-                                <span>4 Beds</span>
-                            </div>
-                            <div class="feature">
-                                <i class="fa-solid fa-bath"></i>
-                                <span>3 Baths</span>
-                            </div>
-                            <div class="feature">
-                                <i class="fa-solid fa-maximize"></i>
-                                <span>2,400 sqft</span>
-                            </div>
-                        </div>
-                        <div class="card-footer">
-                            <div class="card-price">
-                                $450<span>/night</span>
-                            </div>
-                            <button class="details-btn">View Details</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Card 2 -->
-                <div class="property-card">
-                    <div class="card-image">
-                        <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80" alt="Urban Apartment">
-                        <div class="card-badge">New</div>
-                        <div class="card-heart">
-                            <i class="fa-regular fa-heart"></i>
-                        </div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Downtown Urban Apartment</h3>
-                        <div class="card-location">
-                            <i class="fa-solid fa-location-dot"></i>
-                            <span>Kigali, City Center</span>
-                        </div>
-                        <div class="card-features">
-                            <div class="feature">
-                                <i class="fa-solid fa-bed"></i>
-                                <span>2 Beds</span>
-                            </div>
-                            <div class="feature">
-                                <i class="fa-solid fa-bath"></i>
-                                <span>2 Baths</span>
-                            </div>
-                            <div class="feature">
-                                <i class="fa-solid fa-maximize"></i>
-                                <span>1,200 sqft</span>
-                            </div>
-                        </div>
-                        <div class="card-footer">
-                            <div class="card-price">
-                                $280<span>/night</span>
-                            </div>
-                            <button class="details-btn">View Details</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Card 3 -->
-                <div class="property-card">
-                    <div class="card-image">
-                        <img src="https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=800&q=80" alt="Countryside House">
-                        <div class="card-badge">Hot Deal</div>
-                        <div class="card-heart">
-                            <i class="fa-regular fa-heart"></i>
-                        </div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Peaceful Countryside House</h3>
-                        <div class="card-location">
-                            <i class="fa-solid fa-location-dot"></i>
-                            <span>Musanze, Northern Province</span>
-                        </div>
-                        <div class="card-features">
-                            <div class="feature">
-                                <i class="fa-solid fa-bed"></i>
-                                <span>3 Beds</span>
-                            </div>
-                            <div class="feature">
-                                <i class="fa-solid fa-bath"></i>
-                                <span>2 Baths</span>
-                            </div>
-                            <div class="feature">
-                                <i class="fa-solid fa-maximize"></i>
-                                <span>1,800 sqft</span>
-                            </div>
-                        </div>
-                        <div class="card-footer">
-                            <div class="card-price">
-                                $320<span>/night</span>
-                            </div>
-                            <button class="details-btn">View Details</button>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-        </div>
-    </section>
-
-
-
-</body>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/config.js"></script>
 <script src="/js/script.js"></script>
+<script>
+(async () => {
+    const sb = window.supabaseClient;
+    const grid = document.getElementById('propertiesGrid');
+    const countEl = document.getElementById('resultsCount');
+    const heading = document.getElementById('gridHeading');
+    let activeCat = '';
 
+    function esc(s) { return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+    function showSkeletons(n) {
+        grid.innerHTML = Array(n||6).fill(
+            '<div class="skel-card"><div class="skel-img skeleton"></div><div class="skel-body">' +
+            '<div class="skeleton" style="height:18px;width:72%;"></div>' +
+            '<div class="skeleton" style="height:13px;width:48%;"></div>' +
+            '<div class="skeleton" style="height:13px;width:60%;"></div>' +
+            '<div class="skeleton" style="height:20px;width:36%;margin-top:8px;"></div>' +
+            '</div></div>'
+        ).join('');
+    }
+
+    // auth nav
+    try {
+        const { data: { user } } = await sb.auth.getUser();
+        if (user) {
+            document.getElementById('signInBtn').classList.add('hidden');
+            document.getElementById('userIcon').classList.remove('hidden');
+        }
+    } catch(e) {}
+
+    // provinces
+    const flProv = document.getElementById('flProvince');
+    const { data: provs } = await sb.from('provinces').select('id,name').order('name');
+    (provs||[]).forEach(p => { const o = document.createElement('option'); o.value = p.id; o.text = p.name; flProv.appendChild(o); });
+
+    window.onProvinceChange = async () => {
+        const pvId = flProv.value;
+        const flD = document.getElementById('flDistrict');
+        const flS = document.getElementById('flSector');
+        flD.innerHTML = '<option value="">All Districts</option>';
+        flS.innerHTML = '<option value="">All Sectors</option>';
+        flS.disabled = true;
+        if (pvId) {
+            const { data: ds } = await sb.from('districts').select('id,name').eq('province_id', pvId).order('name');
+            (ds||[]).forEach(d => { const o = document.createElement('option'); o.value = d.id; o.text = d.name; flD.appendChild(o); });
+            flD.disabled = false;
+        } else { flD.disabled = true; }
+        applyFilters();
+    };
+
+    window.onDistrictChange = async () => {
+        const dtId = document.getElementById('flDistrict').value;
+        const flS = document.getElementById('flSector');
+        flS.innerHTML = '<option value="">All Sectors</option>';
+        if (dtId) {
+            const { data: ss } = await sb.from('sectors').select('id,name').eq('district_id', dtId).order('name');
+            (ss||[]).forEach(s => { const o = document.createElement('option'); o.value = s.id; o.text = s.name; flS.appendChild(o); });
+            flS.disabled = false;
+        } else { flS.disabled = true; }
+        applyFilters();
+    };
+
+    document.querySelectorAll('.cat-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeCat = btn.dataset.cat;
+            const labels = { '': 'All Listings', 'real_estate': 'Real Estate', 'vehicle': 'Vehicles' };
+            heading.textContent = labels[activeCat] || 'All Listings';
+            applyFilters();
+        });
+    });
+
+    document.getElementById('heroSearch').addEventListener('keydown', e => { if (e.key === 'Enter') applyFilters(); });
+
+    window.applyFilters = async () => {
+        const qtext    = document.getElementById('heroSearch').value.trim();
+        const province = document.getElementById('flProvince').value;
+        const district = document.getElementById('flDistrict').value;
+        const sector   = document.getElementById('flSector').value;
+        await loadListings({ qtext, province, district, sector, category: activeCat });
+    };
+
+    async function loadListings({ qtext='', province='', district='', sector='', category='' } = {}) {
+        showSkeletons(6);
+
+        let q = sb.from('listings')
+            .select('id,title,price,currency,availability_status,category_slug,province_id,district_id,created_at')
+            .eq('status', 'approved')
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        if (qtext)    q = q.ilike('title', `%${qtext}%`);
+        if (province) q = q.eq('province_id', province);
+        if (district) q = q.eq('district_id', district);
+        if (sector)   q = q.eq('sector_id', sector);
+        if (category) q = q.eq('category_slug', category);
+
+        const { data, error } = await q;
+        if (error) { grid.innerHTML = `<div class="state-box"><i class="fa-solid fa-triangle-exclamation"></i><p>${esc(error.message)}</p></div>`; return; }
+        if (!data || !data.length) { grid.innerHTML = '<div class="state-box"><i class="fa-solid fa-house-circle-xmark"></i><p>No listings found. Try different filters.</p></div>'; countEl.textContent = '0 results'; return; }
+
+        countEl.textContent = data.length + ' result' + (data.length !== 1 ? 's' : '');
+
+        // batch images
+        const ids = data.map(l => l.id);
+        const { data: imgs } = await sb.from('listing_images').select('listing_id,image_url').in('listing_id', ids);
+        const imgMap = {};
+        (imgs||[]).forEach(img => { if (!imgMap[img.listing_id]) imgMap[img.listing_id] = img.image_url; });
+
+        // batch location names
+        const pvIds = [...new Set(data.map(l => l.province_id).filter(Boolean))];
+        const dtIds = [...new Set(data.map(l => l.district_id).filter(Boolean))];
+        const pvMap = {}, dtMap = {};
+        if (pvIds.length) { const { data: ps } = await sb.from('provinces').select('id,name').in('id', pvIds); (ps||[]).forEach(p => pvMap[p.id] = p.name); }
+        if (dtIds.length) { const { data: ds } = await sb.from('districts').select('id,name').in('id', dtIds); (ds||[]).forEach(d => dtMap[d.id] = d.name); }
+
+        grid.innerHTML = '';
+        data.forEach(l => {
+            const thumb  = imgMap[l.id];
+            const avail  = l.availability_status || 'available';
+            const isVeh  = l.category_slug === 'vehicle';
+            const catLbl = isVeh ? 'Vehicle' : 'Real Estate';
+            const catIcon= isVeh ? 'fa-car' : 'fa-house';
+            const loc    = [dtMap[l.district_id], pvMap[l.province_id]].filter(Boolean).join(', ') || 'Rwanda';
+            const unit   = isVeh ? '/day' : '/night';
+            const price  = Number(l.price).toLocaleString();
+
+            const card = document.createElement('a');
+            card.href = '/detail.html?id=' + l.id;
+            card.className = 'property-card';
+            card.innerHTML =
+                '<div class="card-image">' +
+                    (thumb ? '<img src="' + esc(thumb) + '" alt="' + esc(l.title) + '" loading="lazy">' : '<div class="card-no-img"><i class="fa-solid fa-image" style="font-size:44px;color:#ddd;"></i></div>') +
+                    '<div class="cat-label">' + catLbl + '</div>' +
+                    '<div class="card-heart" onclick="event.preventDefault()"><i class="fa-regular fa-heart"></i></div>' +
+                    '<div class="avail-strip ' + avail + '">' + (avail === 'available' ? '&#9679; Available' : '&#9679; ' + avail) + '</div>' +
+                '</div>' +
+                '<div class="card-content">' +
+                    '<h3>' + esc(l.title) + '</h3>' +
+                    '<div class="card-location"><i class="fa-solid fa-location-dot"></i><span>' + esc(loc) + '</span></div>' +
+                    '<div class="card-features">' +
+                        '<div class="feature"><i class="fa-solid ' + catIcon + '"></i><span>' + catLbl + '</span></div>' +
+                        '<div class="feature"><i class="fa-solid fa-circle-check" style="color:#2ecc71"></i><span>' + avail + '</span></div>' +
+                    '</div>' +
+                    '<div class="card-footer">' +
+                        '<div class="card-price">' + price + ' <span>' + (l.currency||'RWF') + unit + '</span></div>' +
+                        '<button class="details-btn">View Details</button>' +
+                    '</div>' +
+                '</div>';
+            grid.appendChild(card);
+        });
+    }
+
+    showSkeletons(6);
+    await loadListings();
+})();
+</script>
+</body>
 </html>
