@@ -28,6 +28,38 @@ let CURRENT_PROFILE = null;
 let CURRENT_ROLE = null; // 'admin' | 'owner' | 'user'
 
 /* ===========================
+   TOAST NOTIFICATIONS
+   =========================== */
+function toast(message, type = 'success', duration = 3500) {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:10px;pointer-events:none;';
+        document.body.appendChild(container);
+    }
+    const cfg = {
+        success: { bg: '#2ecc71', icon: 'fa-circle-check' },
+        error:   { bg: '#e74c3c', icon: 'fa-circle-xmark' },
+        info:    { bg: '#3498db', icon: 'fa-circle-info' },
+        warning: { bg: '#f39c12', icon: 'fa-triangle-exclamation' }
+    };
+    const { bg, icon } = cfg[type] || cfg.info;
+    if (!document.getElementById('toastStyle')) {
+        const s = document.createElement('style');
+        s.id = 'toastStyle';
+        s.textContent = `@keyframes slideInT{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:translateX(0)}}@keyframes fadeOutT{from{opacity:1}to{opacity:0;transform:translateX(60px)}}`;
+        document.head.appendChild(s);
+    }
+    const t = document.createElement('div');
+    t.style.cssText = `background:${bg};color:#fff;padding:14px 20px;border-radius:10px;display:flex;align-items:center;gap:12px;font-size:14px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,0.18);pointer-events:all;min-width:260px;max-width:380px;animation:slideInT 0.3s ease;font-family:'Inter',sans-serif;`;
+    t.innerHTML = `<i class="fa-solid ${icon}" style="font-size:18px;flex-shrink:0;"></i><span>${message}</span>`;
+    container.appendChild(t);
+    setTimeout(() => { t.style.animation = 'fadeOutT 0.3s ease forwards'; setTimeout(() => t.remove(), 350); }, duration);
+}
+window.toast = toast;
+
+/* ===========================
    INITIALIZATION
    =========================== */
 document.addEventListener('DOMContentLoaded', async () => {
@@ -338,13 +370,32 @@ function updateFormLabels() {
     const cat = document.getElementById('listCategory')?.value;
     const priceLabel = document.getElementById('priceLabel');
     const locationBox = document.querySelector('.location-box');
+    const locationInputs = locationBox ? locationBox.querySelectorAll('select, input') : [];
 
     if (cat === 'vehicle') {
-        // hide location block and make address optional
-        if (locationBox) locationBox.style.display = 'none';
+        if (locationBox) {
+            locationBox.style.opacity = '0.4';
+            locationBox.style.pointerEvents = 'none';
+            locationBox.style.position = 'relative';
+            // Add overlay label
+            let lbl = locationBox.querySelector('.vehicle-note');
+            if (!lbl) {
+                lbl = document.createElement('p');
+                lbl.className = 'vehicle-note';
+                lbl.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(235,103,83,0.12);color:var(--primary,#EB6753);font-weight:600;font-size:13px;padding:6px 14px;border-radius:8px;white-space:nowrap;pointer-events:none;';
+                lbl.textContent = '📍 Location not required for vehicles';
+                locationBox.appendChild(lbl);
+            }
+        }
         if (priceLabel) priceLabel.innerText = 'Price per Day (RWF)';
+        locationInputs.forEach(el => el.removeAttribute('required'));
     } else {
-        if (locationBox) locationBox.style.display = '';
+        if (locationBox) {
+            locationBox.style.opacity = '';
+            locationBox.style.pointerEvents = '';
+            const lbl = locationBox.querySelector('.vehicle-note');
+            if (lbl) lbl.remove();
+        }
         if (priceLabel) priceLabel.innerText = 'Price per Night (RWF)';
     }
 }
@@ -524,11 +575,12 @@ async function deleteListing(listingId) {
     try {
         const { error } = await _supabase.from('listings').delete().eq('id', listingId);
         if (error) throw error;
-        alert('Listing deleted');
-        await loadListingsTable(); // or loadListingsGrid()
+        toast('Listing deleted successfully.', 'success');
+        await filterListings();
+        await loadCounts();
     } catch (err) {
         console.error('deleteListing', err);
-        alert('Failed to delete listing');
+        toast('Failed to delete listing: ' + err.message, 'error');
     }
 }
 
@@ -540,43 +592,41 @@ function initials(name) {
 // change role in profiles table
 async function updateUserRole(userId, newRole) {
     if (!confirm(`Change role to "${newRole}" for this user?`)) return;
-        try {
-            const { error } = await _supabase.from('profiles').update({ role: newRole }).eq('id', userId);
-            if (error) throw error;
-            alert('Role updated.');
-            await loadUsersTable(); // refresh
-        } catch (err) {
-            console.error('updateUserRole', err);
-            alert('Failed to update role: ' + (err.message || JSON.stringify(err)));
-        }
-    }
-
-    // ban/unban user (simple flag in profiles table; adapt if you store in auth)
-async function toggleUserBan(userId, action) {
     try {
-        const suspended = action === 'banned';
-        const { error } = await _supabase.from('profiles').update({ suspended }).eq('id', userId);
+        const { error } = await _supabase.from('profiles').update({ role: newRole }).eq('id', userId);
         if (error) throw error;
-        alert(suspended ? 'User banned.' : 'User unbanned.');
+        toast('Role updated successfully.', 'success');
         await loadUsersTable();
     } catch (err) {
-        console.error('toggleUserBan', err);
-        alert('Failed to change status.');
+        console.error('updateUserRole', err);
+        toast('Failed to update role: ' + (err.message || JSON.stringify(err)), 'error');
     }
 }
 
-    // delete profile (and expect server-side cascade to remove auth row if you have triggers)
-    // NOTE: this may fail client-side if RLS prevents; run server-side if that happens.
+async function toggleUserBan(userId, action) {
+    try {
+        const banned = action === 'banned';
+        const { error } = await _supabase.from('profiles').update({ banned }).eq('id', userId);
+        if (error) throw error;
+        toast(banned ? 'User banned.' : 'User unbanned.', banned ? 'warning' : 'success');
+        await loadUsersTable();
+    } catch (err) {
+        console.error('toggleUserBan', err);
+        toast('Failed to change user status.', 'error');
+    }
+}
+
 async function deleteUser(userId) {
     if (!confirm('Delete this user and profile? This is permanent.')) return;
     try {
         const { error } = await _supabase.from('profiles').delete().eq('id', userId);
         if (error) throw error;
-            alert('User profile deleted.');
-            await loadUsersTable();
+        toast('User profile deleted.', 'success');
+        await loadUsersTable();
+        await loadCounts();
     } catch (err) {
         console.error('deleteUser', err);
-        alert('Failed to delete user: ' + (err.message || JSON.stringify(err)));
+        toast('Failed to delete user: ' + (err.message || JSON.stringify(err)), 'error');
     }
 }
 
@@ -706,40 +756,75 @@ async function loadListingsGrid(filters = {}) {
     if (!container) return;
     container.style.display = 'grid';
     container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
-    container.innerHTML = '<div>Loading...</div>';
+    container.innerHTML = '<div style="padding:20px;grid-column:1/-1">Loading...</div>';
 
-    // Build query
-    let q = _supabase.from('listings').select('id,title,price,currency,availability_status,owner_id,province_id,district_id,sector_id,thumbnail_url').order('created_at', { ascending: false }).limit(200);
+    // Build query — no thumbnail_url column
+    let q = _supabase
+        .from('listings')
+        .select('id,title,price,currency,availability_status,status,owner_id,province_id,district_id,sector_id,category_slug,created_at')
+        .order('created_at', { ascending: false })
+        .limit(200);
 
     if (filters.qtext) q = q.ilike('title', `%${filters.qtext}%`);
     if (filters.province) q = q.eq('province_id', filters.province);
     if (filters.district) q = q.eq('district_id', filters.district);
     if (filters.sector) q = q.eq('sector_id', filters.sector);
+    if (filters.category) q = q.eq('category_slug', filters.category);
 
     // owner filter for role
     if (CURRENT_ROLE === 'owner') q = q.eq('owner_id', CURRENT_PROFILE.id);
 
     const { data, error } = await q;
-    if (error) { container.innerHTML = `<div>Error: ${error.message}</div>`; return; }
-    if (!data || data.length === 0) { container.innerHTML = '<div>No listings match.</div>'; return; }
+    if (error) { container.innerHTML = `<div style="padding:20px;color:red">Error: ${error.message}</div>`; return; }
+    if (!data || data.length === 0) { container.innerHTML = '<div style="padding:20px">No listings match.</div>'; return; }
+
+    // Batch-fetch first image per listing
+    const listingIds = data.map(l => l.id);
+    const { data: allImages } = await _supabase.from('listing_images').select('listing_id,image_url').in('listing_id', listingIds);
+    const imageMap = {};
+    (allImages || []).forEach(img => { if (!imageMap[img.listing_id]) imageMap[img.listing_id] = img.image_url; });
+
+    // Fetch owner names
+    const ownerIds = [...new Set(data.map(l => l.owner_id).filter(Boolean))];
+    const ownerMap = {};
+    if (ownerIds.length) {
+        const { data: owners } = await _supabase.from('profiles').select('id,full_name').in('id', ownerIds);
+        (owners || []).forEach(o => ownerMap[o.id] = o.full_name);
+    }
 
     container.innerHTML = '';
     for (const l of data) {
+        const thumb = imageMap[l.id] || null;
+        const availBadgeColor = l.availability_status === 'available' ? '#2ecc71' : l.availability_status === 'booked' ? '#e74c3c' : '#95a5a6';
+        const statusBadgeColor = l.status === 'approved' ? '#2ecc71' : l.status === 'pending' ? '#f39c12' : '#95a5a6';
         const card = document.createElement('div');
         card.className = 'listing-card';
+        card.style.cssText = 'background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;flex-direction:column;';
         card.innerHTML = `
-        <div class="listing-thumb" style="height:160px; background:#eee; border-radius:8px; overflow:hidden">
-            <img src="${l.thumbnail_url || '/assets/img/placeholder.png'}" alt="" style="width:100%;height:100%;object-fit:cover" />
-        </div>
-        <div style="padding:12px">
-            <h4 style="margin:0 0 6px">${escapeHtml(l.title)}</h4>
-            <p style="margin:0 0 8px">${l.price} ${l.currency} • ${l.availability_status || 'available'}</p>
-            <div style="display:flex; gap:8px; justify-content:flex-end">
-            ${CURRENT_ROLE === 'admin' ? `<button class="btn-small" onclick="deleteListing('${l.id}')">Delete</button>` : ''}
-            ${CURRENT_ROLE === 'admin' ? `<button class="btn-small" onclick="toggleListingAvailability('${l.id}','${l.availability_status}')">${l.availability_status === 'available' ? 'Set Unavailable' : 'Set Available'}</button>` : ''}
-            ${CURRENT_ROLE === 'owner' && l.availability_status !== 'booked' ? `<button class="btn-small" onclick="toggleListingAvailability('${l.id}','${l.availability_status}')">${l.availability_status === 'available' ? 'Set Unavailable' : 'Set Available'}</button>` : ''}
+            <a href="detail.html?id=${l.id}" style="text-decoration:none;color:inherit;display:block;">
+                <div style="height:180px;background:#f0f0f0;overflow:hidden;position:relative;">
+                    ${thumb
+                        ? `<img src="${thumb}" alt="${escapeHtml(l.title)}" style="width:100%;height:100%;object-fit:cover;">`
+                        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-image" style="font-size:32px;color:#ccc;"></i></div>`}
+                    <span style="position:absolute;top:8px;left:8px;background:${availBadgeColor};color:#fff;font-size:11px;padding:3px 8px;border-radius:20px;font-weight:600;">${l.availability_status || 'available'}</span>
+                    <span style="position:absolute;top:8px;right:8px;background:${statusBadgeColor};color:#fff;font-size:11px;padding:3px 8px;border-radius:20px;font-weight:600;">${l.status || 'pending'}</span>
+                </div>
+            </a>
+            <div style="padding:14px;flex:1;display:flex;flex-direction:column;gap:6px;">
+                <a href="detail.html?id=${l.id}" style="text-decoration:none;"><h4 style="margin:0;font-size:15px;font-weight:600;color:#222;">${escapeHtml(l.title)}</h4></a>
+                <p style="margin:0;color:#888;font-size:13px;">${l.category_slug || ''} • ${ownerMap[l.owner_id] || 'Unknown'}</p>
+                <p style="margin:0;color:var(--primary,#EB6753);font-weight:700;font-size:14px;">${Number(l.price).toLocaleString()} ${l.currency || 'RWF'}</p>
+                <div style="display:flex;gap:8px;margin-top:auto;padding-top:10px;flex-wrap:wrap;">
+                    ${CURRENT_ROLE === 'admin' ? `
+                        <button class="btn-small" onclick="approveListing('${l.id}')" style="flex:1"><i class="fa-solid fa-check"></i> Approve</button>
+                        <button class="btn-small" onclick="toggleListingAvailability('${l.id}','${l.availability_status}')" style="flex:1">${l.availability_status === 'available' ? '<i class="fa-solid fa-eye-slash"></i> Disable' : '<i class="fa-solid fa-eye"></i> Enable'}</button>
+                        <button class="btn-small btn-danger" onclick="deleteListing('${l.id}')" style="flex:1"><i class="fa-solid fa-trash"></i> Delete</button>
+                    ` : ''}
+                    ${CURRENT_ROLE === 'owner' && l.availability_status !== 'booked' ? `
+                        <button class="btn-small" onclick="toggleListingAvailability('${l.id}','${l.availability_status}')" style="flex:1">${l.availability_status === 'available' ? 'Set Unavailable' : 'Set Available'}</button>
+                    ` : ''}
+                </div>
             </div>
-        </div>
         `;
         container.appendChild(card);
     }
@@ -1274,66 +1359,53 @@ async function loadMessagesPreview() {
    =========================== */
 async function approveListing(listingId) {
     console.log("✅ [ACTION] Approving listing:", listingId);
-    
     if (!confirm('Approve this listing?')) return;
-    
     try {
         const { error } = await _supabase
             .from('listings')
-            .update({ status: 'approved', is_published: true })
+            .update({ status: 'approved' })
             .eq('id', listingId);
-        
         if (error) throw error;
-        
-        alert('Listing approved.');
-        console.log("✅ [ACTION] Listing approved successfully");
-        await loadListingsTable();
+        toast('Listing approved successfully!', 'success');
+        await filterListings();
     } catch (err) {
         console.error("❌ [ACTION] Error approving listing:", err);
-        alert('Failed to approve listing.');
+        toast('Failed to approve listing: ' + err.message, 'error');
     }
 }
 
 async function toggleListingAvailability(listingId, current) {
     console.log("🔄 [ACTION] Toggling listing availability:", listingId, current);
-    
     try {
         const newStatus = (current === 'available') ? 'unavailable' : 'available';
         const { error } = await _supabase
             .from('listings')
             .update({ availability_status: newStatus })
             .eq('id', listingId);
-        
         if (error) throw error;
-        
-        console.log("✅ [ACTION] Availability toggled to:", newStatus);
-        await loadListingsTable();
+        toast(`Listing set to "${newStatus}"`, 'success');
+        await filterListings();
     } catch (err) {
         console.error("❌ [ACTION] Error toggling availability:", err);
-        alert('Failed to change availability.');
+        toast('Failed to change availability: ' + err.message, 'error');
     }
 }
 
 async function approveBooking(bookingId) {
     console.log("✅ [ACTION] Approving booking:", bookingId);
-    
     if (!confirm('Approve booking? This will notify user and mark listing unavailable.')) return;
-    
     try {
         const { error } = await _supabase
             .from('bookings')
             .update({ status: 'approved' })
             .eq('id', bookingId);
-        
         if (error) throw error;
-        
-        alert('Booking approved.');
-        console.log("✅ [ACTION] Booking approved successfully");
+        toast('Booking approved!', 'success');
         await loadBookingsTable();
-        await loadListingsTable();
+        await filterListings();
     } catch (err) {
         console.error("❌ [ACTION] Error approving booking:", err);
-        alert('Failed to approve booking.');
+        toast('Failed to approve booking: ' + err.message, 'error');
     }
 }
 
@@ -1368,7 +1440,7 @@ async function demoMarkPaid(bookingId) {
             console.log("  Receipt generation skipped (function may not exist)");
         }
         
-        alert('Marked paid (demo).');
+        toast('Marked as paid (demo).', 'success');
         console.log("✅ [DEMO] Booking marked as paid");
         await loadBookingsTable();
         await loadCounts();
@@ -1457,7 +1529,7 @@ async function handleCreateListing() {
         const uploadedImageRows = [];
         if (images.length) {
         for (const file of images) {
-            const path = `listing-images/${ownerId}/${listingId}/${Date.now()}-${file.name}`;
+            const path = `${ownerId}/${listingId}/${Date.now()}-${file.name}`;
             const { error: upErr } = await _supabase.storage.from('listing-images').upload(path, file, { upsert: false });
             if (upErr) {
             console.warn('Image upload failed for', file.name, upErr);
@@ -1465,10 +1537,9 @@ async function handleCreateListing() {
             }
             const { data: urlData } = await _supabase.storage.from('listing-images').getPublicUrl(path);
             const publicUrl = urlData?.publicUrl || null;
-            uploadedImageRows.push({ listing_id: listingId, owner_id: ownerId, url: publicUrl, filename: file.name });
+            uploadedImageRows.push({ listing_id: listingId, image_url: publicUrl, filename: file.name, mime_type: file.type });
         }
 
-        // insert listing_images rows if your DB stores them
         if (uploadedImageRows.length) {
             const { error: imgInsertErr } = await _supabase.from('listing_images').insert(uploadedImageRows);
             if (imgInsertErr) console.warn('listing_images insert error', imgInsertErr);
@@ -1479,7 +1550,7 @@ async function handleCreateListing() {
         const uploadedVideoRows = [];
         if (videos.length) {
         for (const file of videos) {
-            const path = `listing-videos/${ownerId}/${listingId}/${Date.now()}-${file.name}`;
+            const path = `${ownerId}/${listingId}/${Date.now()}-${file.name}`;
             const { error: upErr } = await _supabase.storage.from('listing-videos').upload(path, file, { upsert: false });
             if (upErr) {
             console.warn('Video upload failed for', file.name, upErr);
@@ -1487,7 +1558,7 @@ async function handleCreateListing() {
             }
             const { data: urlData } = await _supabase.storage.from('listing-videos').getPublicUrl(path);
             const publicUrl = urlData?.publicUrl || null;
-            uploadedVideoRows.push({ listing_id: listingId, owner_id: ownerId, url: publicUrl, filename: file.name });
+            uploadedVideoRows.push({ listing_id: listingId, video_url: publicUrl, filename: file.name, mime_type: file.type });
         }
 
         if (uploadedVideoRows.length) {
@@ -1496,16 +1567,11 @@ async function handleCreateListing() {
         }
         }
 
-        // 4) Optionally set a thumbnail_url on listing from first image
-        if (uploadedImageRows.length) {
-        await _supabase.from('listings').update({ thumbnail_url: uploadedImageRows[0].url }).eq('id', listingId);
-        }
-
-        alert('Listing created (pending approval).');
+        toast('Listing created! Pending approval.', 'success');
         console.log('✅ Listing and media created');
     } catch (err) {
         console.error('❌ [LISTING] Error creating listing:', err);
-        alert('Failed to create listing: ' + (err.message || JSON.stringify(err)));
+        toast('Failed to create listing: ' + (err.message || JSON.stringify(err)), 'error');
     }
 }
 
