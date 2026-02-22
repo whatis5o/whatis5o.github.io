@@ -136,7 +136,7 @@
                 </div>
 
                 <!-- add below the table or instead of it -->
-                <div id="listingsGrid" class="listings-grid" style="display:none; gap:16px;"></div>
+                <div id="listingsGrid" class="listings-grid" style="display:grid; gap:16px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));"></div>
 
             </div>
         </div>
@@ -210,43 +210,29 @@
             <div class="chat-container">
                 <div class="chat-sidebar">
                     <div class="chat-header">
-                        <h3>Messages</h3>
-                        <div class="search-box" style="margin-top:10px;">
-                            <i class="fa-solid fa-search"></i>
-                            <input type="text" id="messageUserSearch"
-                                placeholder="Search users..."
-                                onkeyup="filterChatUsers()">
-                        </div>
+                        <h3 style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-inbox" style="color:var(--primary);font-size:16px;"></i> Inbox</h3>
+                        <p style="color:#999;font-size:12px;margin-top:4px;">Messages from Contact Form</p>
                     </div>
-                    
                     <div class="chat-user-list" id="chatUserList">
-                        <div class="chat-user-item active">
-                            <div class="chat-user-avatar">U</div>
-                            <div class="chat-user-info">
-                                <h4>User Name</h4>
-                                <p>Last message preview...</p>
-                            </div>
-                        </div>
-
-                        <div class="chat-user-item">
-                            <div class="chat-user-avatar">S</div>
-                            <div class="chat-user-info">
-                                <h4>Shema</h4>
-                                <p>I just sent the backend updates</p>
-                            </div>
+                        <div style="padding:20px;text-align:center;color:#ccc;font-size:13px;">
+                            <i class="fa-solid fa-envelope-open" style="font-size:28px;display:block;margin-bottom:8px;"></i>
+                            Loading messages...
                         </div>
                     </div>
                 </div>
                 <div class="chat-window">
                     <div class="chat-window-header">
-                        <button id="backToChats" style="display:none;">
+                        <button id="backToChats">
                             <i class="fa-solid fa-arrow-left"></i>
                         </button>
-                        <span id="chatWindowHeader">Select a conversation</span>
+                        <span id="chatWindowHeader">Select a message to read</span>
                     </div>
-
-                    <div class="chat-messages" id="chatMessagesArea"></div>
-                    
+                    <div class="chat-messages" id="chatMessagesArea" style="overflow-y:auto;">
+                        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#ccc;gap:12px;">
+                            <i class="fa-regular fa-envelope-open" style="font-size:52px;"></i>
+                            <p style="font-size:15px;">Select a message from the left</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -259,23 +245,41 @@
                     <div class="settings-avatar" id="adminAvatar">A</div>
                     <div>
                         <h3 id="adminName">Admin Name</h3>
-                        <p id="adminEmailDisplay">admin@email.com</p>
+                        <p id="adminEmailDisplay" style="color:#888;font-size:14px;margin-top:4px;"></p>
                     </div>
                 </div>
 
                 <form id="settingsForm">
                     <div class="form-group">
                         <label>Change Email</label>
-                        <input type="email" id="newEmail" class="form-control">
+                        <input type="email" id="newEmail" class="form-control" placeholder="Enter new email address...">
                     </div>
 
                     <div class="form-group">
                         <label>Change Password</label>
-                        <input type="password" id="newPassword" class="form-control">
+                        <div style="position:relative;">
+                            <input type="password" id="newPassword" class="form-control" placeholder="Enter new password..." style="padding-right:44px;">
+                            <button type="button" onclick="togglePasswordVisibility()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#888;">
+                                <i class="fa-regular fa-eye" id="pwToggleIcon"></i>
+                            </button>
+                        </div>
+                        <small style="color:#bbb;font-size:12px;margin-top:4px;display:block;">Minimum 8 characters recommended.</small>
                     </div>
 
                     <button type="submit" class="btn-primary">Save Changes</button>
                 </form>
+
+                <div style="margin-top:28px;padding-top:24px;border-top:2px solid #f5f5f5;">
+                    <h4 style="color:#1a1a1a;font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+                        <i class="fa-solid fa-shield-halved" style="color:var(--primary);"></i> Account Actions
+                    </h4>
+                    <button onclick="handleLogout()"
+                        style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff5f5;color:#e74c3c;border:2px solid #fcd5d5;padding:13px 24px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;font-family:'Inter',sans-serif;"
+                        onmouseover="this.style.background='#e74c3c';this.style.color='#fff';this.style.borderColor='#e74c3c';"
+                        onmouseout="this.style.background='#fff5f5';this.style.color='#e74c3c';this.style.borderColor='#fcd5d5';">
+                        <i class="fa-solid fa-right-from-bracket"></i> Sign Out of Dashboard
+                    </button>
+                </div>
 
             </div>
         </div>
@@ -440,6 +444,30 @@
     </div>
 
     <!-- 1. Supabase Library FIRST -->
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        function togglePasswordVisibility() {
+            const input = document.getElementById('newPassword');
+            const icon = document.getElementById('pwToggleIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-regular fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-regular fa-eye';
+            }
+        }
+        function filterChatUsers() {
+            const q = (document.getElementById('messageUserSearch')?.value || '').toLowerCase();
+            document.querySelectorAll('#chatUserList .chat-user-item').forEach(el => {
+                const text = (el.textContent || '').toLowerCase();
+                el.style.display = text.includes(q) ? '' : 'none';
+            });
+        }
+    </script>
+
+    <!-- 1. Supabase Library FIRST -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <!-- 2. Config -->
@@ -453,6 +481,4 @@
 
 </body>
 </html>
-
-
 
