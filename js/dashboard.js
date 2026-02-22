@@ -30,6 +30,7 @@ let CURRENT_ROLE = null; // 'admin' | 'owner' | 'user'
 /* ===========================
    TOAST NOTIFICATIONS
    =========================== */
+
 function toast(message, type = 'success', duration = 3500) {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -64,7 +65,8 @@ window.toast = toast;
    =========================== */
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("📱 [ADMIN] DOM loaded, initializing...");
-    
+    const cachedRole = localStorage.getItem('afriStay_role');
+    if (cachedRole) applyRoleToUI(cachedRole);
     // Step 0: Get Supabase client
     if (window.supabaseClient) {
         _supabase = window.supabaseClient;
@@ -154,6 +156,11 @@ function bindUIInteractions() {
             
             // Switch to the selected panel
             togglePanels(`${tabName}Panel`);
+            // Auto-load data when switching tabs
+            if (tabName === 'listings')   { filterListings(); }
+            if (tabName === 'events')     { loadEventsTable(); }
+            if (tabName === 'promotions') { loadPromotionsTable(); }
+            if (tabName === 'messages')   { loadMessagesPreview(); }
             
             // Update active states
             navButtons.forEach(b => b.classList.remove('active'));
@@ -225,6 +232,40 @@ function bindUIInteractions() {
         openCreateListingBtn.addEventListener('click', () => {
             console.log("➕ [LISTING] Opening create listing modal");
             openModal('listingModal');
+            // Inject featured checkbox if not already in the form
+            if (CURRENT_ROLE === 'admin' && !document.getElementById('listFeatured')) {
+                const videoInput = document.getElementById('listVideoFiles');
+                if (videoInput) {
+                    const wrap = document.createElement('div');
+                    wrap.style.cssText = 'margin-top:14px;padding:12px 14px;background:#fff8f0;border:1px solid #fde8d8;border-radius:10px;';
+                    wrap.innerHTML = `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;color:#333;font-weight:500;">
+                        <input type="checkbox" id="listFeatured" style="width:17px;height:17px;accent-color:#EB6753;cursor:pointer;flex-shrink:0;">
+                        <div>
+                            <span style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-star" style="color:#f1c40f;"></i> Mark as Featured Listing</span>
+                        </div></label>`;
+                    videoInput.parentElement?.after(wrap);
+                }
+            }
+            if (!document.getElementById('listFeatured')) {
+                const videoInput = document.getElementById('listVideoFiles');
+                if (videoInput) {
+                    const wrap = document.createElement('div');
+                    wrap.style.cssText = 'margin-top:14px;padding:12px 14px;background:#fff8f0;border:1px solid #fde8d8;border-radius:10px;';
+                    wrap.innerHTML =
+                        '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;color:#333;font-weight:500;">' +
+                        '<input type="checkbox" id="listFeatured" style="width:17px;height:17px;accent-color:#EB6753;cursor:pointer;flex-shrink:0;">' +
+                        '<div>' +
+                        '<span style="display:flex;align-items:center;gap:6px;">' +
+                        '<i class="fa-solid fa-star" style="color:#f1c40f;"></i> Mark as Featured Listing' +
+                        '</span>' +
+                        '<span style="font-size:12px;color:#999;font-weight:400;">Featured listings appear on the home page carousel</span>' +
+                        '</div></label>';
+                    videoInput.closest('div')?.after(wrap) || videoInput.parentElement?.after(wrap);
+                }
+            } else {
+                // Reset checkbox each time modal opens
+                document.getElementById('listFeatured').checked = false;
+            }
         });
     }
 
@@ -278,6 +319,24 @@ function bindUIInteractions() {
             const chatWindow = $('.chat-window');
             if (chatWindow) chatWindow.classList.remove('active');
         }
+    });
+
+    // === Event Form Submit ===
+    document.getElementById('eventForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await handleCreateEvent();
+    });
+
+    // === Promo Form Submit ===
+    document.getElementById('promoForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await handleCreatePromo();
+    });
+
+    // === Settings Form Submit ===
+    document.getElementById('settingsForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await handleSaveSettings();
     });
 
     // === Logout Button ===
@@ -537,7 +596,7 @@ async function initAuthAndRole() {
         console.warn('Not an admin/owner — redirecting from dashboard');
         // friendly message then redirect
         alert('You do not have permission to access the dashboard.');
-        window.location.href = 'index.html';
+        window.location.href = '/index.html';
         return;
         }
 
@@ -761,7 +820,7 @@ async function loadListingsGrid(filters = {}) {
     // Build query — no thumbnail_url column
     let q = _supabase
         .from('listings')
-        .select('id,title,price,currency,availability_status,status,owner_id,province_id,district_id,sector_id,category_slug,created_at')
+        .select('id,title,price,currency,availability_status,status,owner_id,province_id,district_id,sector_id,category_slug,created_at,featured')
         .order('created_at', { ascending: false })
         .limit(200);
 
@@ -801,7 +860,7 @@ async function loadListingsGrid(filters = {}) {
         card.className = 'listing-card';
         card.style.cssText = 'background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;flex-direction:column;';
         card.innerHTML = `
-            <a href="detail.html?id=${l.id}" style="text-decoration:none;color:inherit;display:block;">
+            <a href="/Detail?id=${l.id}" style="text-decoration:none;color:inherit;display:block;">
                 <div style="height:180px;background:#f0f0f0;overflow:hidden;position:relative;">
                     ${thumb
                         ? `<img src="${thumb}" alt="${escapeHtml(l.title)}" style="width:100%;height:100%;object-fit:cover;">`
@@ -811,7 +870,7 @@ async function loadListingsGrid(filters = {}) {
                 </div>
             </a>
             <div style="padding:14px;flex:1;display:flex;flex-direction:column;gap:6px;">
-                <a href="detail.html?id=${l.id}" style="text-decoration:none;"><h4 style="margin:0;font-size:15px;font-weight:600;color:#222;">${escapeHtml(l.title)}</h4></a>
+                <a href="/Detail?id=${l.id}" style="text-decoration:none;"><h4 style="margin:0;font-size:15px;font-weight:600;color:#222;">${escapeHtml(l.title)}</h4></a>
                 <p style="margin:0;color:#888;font-size:13px;">${l.category_slug || ''} • ${ownerMap[l.owner_id] || 'Unknown'}</p>
                 <p style="margin:0;color:var(--primary,#EB6753);font-weight:700;font-size:14px;">${Number(l.price).toLocaleString()} ${l.currency || 'RWF'}</p>
                 <div style="display:flex;gap:8px;margin-top:auto;padding-top:10px;flex-wrap:wrap;">
@@ -819,6 +878,13 @@ async function loadListingsGrid(filters = {}) {
                         <button class="btn-small" onclick="approveListing('${l.id}')" style="flex:1"><i class="fa-solid fa-check"></i> Approve</button>
                         <button class="btn-small" onclick="toggleListingAvailability('${l.id}','${l.availability_status}')" style="flex:1">${l.availability_status === 'available' ? '<i class="fa-solid fa-eye-slash"></i> Disable' : '<i class="fa-solid fa-eye"></i> Enable'}</button>
                         <button class="btn-small btn-danger" onclick="deleteListing('${l.id}')" style="flex:1"><i class="fa-solid fa-trash"></i> Delete</button>
+                        <label style="width:100%;display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 0 2px;border-top:1px solid #f0f0f0;margin-top:2px;font-size:13px;color:#555;user-select:none;">
+                            <input type="checkbox" id="feat_${l.id}" ${l.featured ? 'checked' : ''}
+                                onchange="toggleFeatured('${l.id}', this.checked)"
+                                style="width:15px;height:15px;accent-color:#EB6753;cursor:pointer;flex-shrink:0;">
+                            <i class="fa-solid fa-star" style="color:#f1c40f;font-size:12px;"></i>
+                            Featured listing
+                        </label>
                     ` : ''}
                     ${CURRENT_ROLE === 'owner' && l.availability_status !== 'booked' ? `
                         <button class="btn-small" onclick="toggleListingAvailability('${l.id}','${l.availability_status}')" style="flex:1">${l.availability_status === 'available' ? 'Set Unavailable' : 'Set Available'}</button>
@@ -839,6 +905,8 @@ async function loadAllCountsAndTables() {
         loadListingsTable(),
         loadBookingsTable(),
         loadUsersTable(),
+        loadEventsTable(),
+        loadPromotionsTable(),
         loadMessagesPreview()
     ]);
     
@@ -936,7 +1004,7 @@ async function fetchOwnerListingIds() {
     return data.map(r => r.id);
 }
 // Add this helper (requires UTILS.debounce if you have it, otherwise simple debounce inline)
-window.searchOwners = UTILS && UTILS.debounce ? UTILS.debounce(_searchOwners, 250) : _searchOwners;
+window.searchOwners = _searchOwners;
 
 async function _searchOwners(e) {
     const q = (e.target.value || '').trim();
@@ -1123,20 +1191,19 @@ async function loadListingsTable() {
    =========================== */
 async function loadBookingsTable() {
     console.log("📅 [BOOKINGS] Loading bookings table...");
-    
     const tbody = $('#allBookingsBody');
-    if (!tbody) {
-        console.warn("⚠️ [BOOKINGS] Table body not found");
-        return;
-    }
+    if (!tbody) return;
     
     tbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
 
     try {
-        let q = _supabase.from('bookings').select('id, listing_id, start_date, end_date, total_amount, status, user_id, created_at');
+        // WE ADDED "profiles!inner(full_name, email, phone)" TO GET THE GUEST INFO
+        let q = _supabase.from('bookings').select(`
+            id, listing_id, start_date, end_date, total_amount, status, user_id, created_at,
+            profiles (full_name, email, phone)
+        `);
 
         if (CURRENT_ROLE === 'owner') {
-            console.log("  Filtering for owner's listing bookings");
             const listingIds = await fetchOwnerListingIds();
             if (!listingIds.length) {
                 tbody.innerHTML = '<tr><td colspan="7">No bookings for your listings.</td></tr>';
@@ -1144,63 +1211,54 @@ async function loadBookingsTable() {
             }
             q = q.in('listing_id', listingIds);
         } else if (CURRENT_ROLE === 'user') {
-            console.log("  Filtering for user's bookings");
             q = q.eq('user_id', CURRENT_PROFILE.id);
         }
 
         const { data, error } = await q.order('created_at', { ascending: false }).limit(200);
         
-        if (error) {
-            console.error("❌ [BOOKINGS] Error loading bookings:", error);
-            tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
-            return;
-        }
-
+        if (error) throw error;
         if (!data || data.length === 0) {
-            console.log("  No bookings found");
             tbody.innerHTML = '<tr><td colspan="7">No bookings found.</td></tr>';
             return;
         }
-
-        console.log(`  Found ${data.length} bookings`);
 
         tbody.innerHTML = '';
         
         for (let i = 0; i < data.length; i++) {
             const r = data[i];
             
-            const { data: listing } = await _supabase
-                .from('listings')
-                .select('title, owner_id')
-                .eq('id', r.listing_id)
-                .maybeSingle();
+            const { data: listing } = await _supabase.from('listings').select('title, owner_id').eq('id', r.listing_id).maybeSingle();
+            
+            // Format Guest Data
+            const guestName = r.profiles?.full_name || 'Unknown Guest';
+            const guestEmail = r.profiles?.email || 'No email';
+            const guestPhone = r.profiles?.phone || 'No phone';
             
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${i + 1}.</td>
                 <td>${shortId(r.id)}</td>
-                <td>${escapeHtml(listing?.title || '—')}</td>
-                <td>${shortId(r.user_id)}</td>
-                <td>${r.start_date} → ${r.end_date}</td>
-                <td>${r.total_amount}</td>
+                <td><strong>${escapeHtml(listing?.title || '—')}</strong></td>
                 <td>
-                    <span class="status-badge status-${r.status}">${r.status}</span>
+                    <strong style="color: #333;">${escapeHtml(guestName)}</strong><br>
+                    <small style="color: #888;">${escapeHtml(guestPhone)}</small><br>
+                    <small style="color: #888;">${escapeHtml(guestEmail)}</small>
+                </td>
+                <td>${r.start_date} → ${r.end_date}</td>
+                <td style="font-weight: 600; color: #EB6753;">${r.total_amount} RWF</td>
+                <td>
+                    <span class="status-badge status-${r.status}">${r.status}</span><br>
                     ${(CURRENT_ROLE === 'owner' && listing?.owner_id === CURRENT_PROFILE.id && r.status === 'pending') ? 
-                        `<button class="btn-small" onclick="approveBooking('${r.id}')">Approve</button>` : ''}
-                    ${DEMO_MODE && (CURRENT_ROLE === 'admin' || (CURRENT_ROLE === 'owner' && listing?.owner_id === CURRENT_PROFILE.id)) ? 
-                        `<button class="btn-small" onclick="demoMarkPaid('${r.id}')">Mark Paid (demo)</button>` : ''}
+                        `<button class="btn-small" style="margin-top: 8px; background: #2ecc71; color: white;" onclick="approveBooking('${r.id}')"><i class="fa-solid fa-check"></i> Approve</button>` : ''}
                 </td>
             `;
             tbody.appendChild(row);
         }
-
-        console.log("✅ [BOOKINGS] Table populated");
-
     } catch (err) {
         console.error("❌ [BOOKINGS] Exception:", err);
-        tbody.innerHTML = '<tr><td colspan="7">Failed to load bookings</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="7">Failed to load bookings: ${err.message}</td></tr>`;
     }
-}
+} 
 
 /* ===========================
    USERS TABLE
@@ -1222,7 +1280,7 @@ async function loadUsersTable(searchTerm = '') {
     try {
         let q = _supabase
         .from('profiles')
-        .select('id, full_name, email, phone, role')
+        .select('id, full_name, email, phone, role, banned')
         .order('created_at', { ascending: false })
         .limit(500);
 
@@ -1255,10 +1313,11 @@ async function loadUsersTable(searchTerm = '') {
             </select>
         `;
 
+        const isBanned = u.banned === true;
         const actionSelectHtml = `
             <select class="status-select" onchange="toggleUserBan('${u.id}', this.value)">
-            <option value="active">active</option>
-            <option value="banned">ban</option>
+            <option value="active" ${!isBanned ? 'selected' : ''}>active</option>
+            <option value="banned" ${isBanned ? 'selected' : ''}>ban</option>
             </select>
         `;
 
@@ -1287,71 +1346,95 @@ async function loadUsersTable(searchTerm = '') {
 
 
 /* ===========================
-   MESSAGES PREVIEW
+   MESSAGES PANEL
    =========================== */
 async function loadMessagesPreview() {
-    console.log("💬 [MESSAGES] Loading messages preview...");
-    
+    console.log("💬 [MESSAGES] Loading messages...");
     const list = $('#chatUserList');
-    if (!list) {
-        console.warn("⚠️ [MESSAGES] Chat list not found");
+    if (!list) return;
+    list.innerHTML = '<div style="padding:16px;color:#999;">Loading...</div>';
+
+    if (!CURRENT_ROLE || CURRENT_ROLE !== 'admin') {
+        list.innerHTML = '<div style="padding:16px;color:#999;">Admin access only.</div>';
         return;
     }
-    
-    list.innerHTML = '<div style="padding:16px">Loading messages...</div>';
-    
-    try {
-        if (!CURRENT_ROLE) {
-            list.innerHTML = '<div style="padding:16px">Login to view messages</div>';
-            return;
-        }
-        
-        if (CURRENT_ROLE !== 'admin') {
-            console.log("  Non-admin user - limited access");
-            list.innerHTML = '<div style="padding:16px">Messages are admin-only in demo</div>';
-            return;
-        }
-        
-        const { data, error } = await _supabase
-            .from('contact_messages')
-            .select('id, name, email, message, created_at')
-            .order('created_at', { ascending: false })
-            .limit(20);
-        
-        if (error) {
-            console.error("❌ [MESSAGES] Error loading messages:", error);
-            list.innerHTML = `<div style="padding:16px">Error: ${error.message}</div>`;
-            return;
-        }
-        
-        if (!data || data.length === 0) {
-            console.log("  No messages found");
-            list.innerHTML = '<div style="padding:16px">No messages</div>';
-            return;
-        }
-        
-        console.log(`  Found ${data.length} messages`);
-        
-        list.innerHTML = '';
-        data.forEach(m => {
-            const el = document.createElement('div');
-            el.className = 'chat-user-item';
-            el.innerHTML = `
-                <div class="chat-user-avatar">${escapeHtml((m.name || 'U')[0])}</div>
-                <div class="chat-user-info">
-                    <h4>${escapeHtml(m.name)}</h4>
-                    <p>${escapeHtml(m.message.slice(0, 80))}...</p>
-                </div>
-            `;
-            list.appendChild(el);
-        });
 
-        console.log("✅ [MESSAGES] Preview loaded");
-        
-    } catch (err) {
-        console.error("❌ [MESSAGES] Exception:", err);
-        list.innerHTML = '<div style="padding:16px">Failed to load messages</div>';
-    }
+    const { data, error } = await _supabase
+        .from('contact_messages')
+        .select('id, name, email, message, created_at')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+    if (error) { list.innerHTML = `<div style="padding:16px;color:red;">${error.message}</div>`; return; }
+    if (!data || !data.length) { list.innerHTML = '<div style="padding:16px;color:#999;">No messages yet.</div>'; return; }
+
+    // Seed the right pane with the first message
+    list.innerHTML = '';
+    data.forEach((m, i) => {
+        const el = document.createElement('div');
+        el.className = 'chat-user-item' + (i === 0 ? ' active' : '');
+        el.dataset.id = m.id;
+        const preview = (m.message || '').slice(0, 60) + ((m.message || '').length > 60 ? '…' : '');
+        el.innerHTML = `
+            <div class="chat-user-avatar" style="background:var(--primary);color:#fff;font-weight:700;">${escapeHtml((m.name || 'U')[0].toUpperCase())}</div>
+            <div class="chat-user-info">
+                <h4>${escapeHtml(m.name || 'Unknown')}</h4>
+                <p style="color:#999;font-size:12px;">${escapeHtml(preview)}</p>
+            </div>
+        `;
+        el.addEventListener('click', () => {
+            $$('.chat-user-item').forEach(x => x.classList.remove('active'));
+            el.classList.add('active');
+            showMessageDetail(m);
+            // Mobile: show right pane
+            const cw = $('.chat-window');
+            if (cw && window.innerWidth <= 768) cw.classList.add('active');
+        });
+        list.appendChild(el);
+    });
+
+    // Auto-show first message
+    if (data.length) showMessageDetail(data[0]);
+    console.log("✅ [MESSAGES] Loaded", data.length, "messages");
+}
+
+function showMessageDetail(m) {
+    const area = $('#chatMessagesArea');
+    if (!area) return;
+    const date = m.created_at ? new Date(m.created_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(m.email || '')}&su=${encodeURIComponent('Re: Your message to AfriStay')}&body=${encodeURIComponent('Hi ' + (m.name || '') + ',\n\nThank you for reaching out to AfriStay!\n\n')}`;
+    const mailtoUrl = `mailto:${encodeURIComponent(m.email || '')}?subject=${encodeURIComponent('Re: Your message to AfriStay')}&body=${encodeURIComponent('Hi ' + (m.name || '') + ',\n\n')}`;
+
+    area.innerHTML = `
+        <div style="padding:28px;max-width:680px;">
+            <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:24px;">
+                <div style="width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;flex-shrink:0;">
+                    ${escapeHtml((m.name || 'U')[0].toUpperCase())}
+                </div>
+                <div style="flex:1;">
+                    <h3 style="margin:0 0 4px;font-size:18px;color:#1a1a1a;">${escapeHtml(m.name || 'Unknown')}</h3>
+                    <p style="margin:0;color:#888;font-size:13px;display:flex;align-items:center;gap:6px;">
+                        <i class="fa-solid fa-envelope" style="color:var(--primary);font-size:12px;"></i>
+                        <a href="mailto:${escapeHtml(m.email || '')}" style="color:var(--primary);text-decoration:none;">${escapeHtml(m.email || '')}</a>
+                    </p>
+                    <p style="margin:4px 0 0;color:#bbb;font-size:12px;"><i class="fa-regular fa-clock" style="margin-right:4px;"></i>${date}</p>
+                </div>
+                <div style="display:flex;gap:8px;flex-shrink:0;">
+                    <a href="${gmailUrl}" target="_blank" class="btn-small" style="display:flex;align-items:center;gap:6px;text-decoration:none;background:var(--primary);color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;">
+                        <i class="fa-solid fa-reply"></i> Reply via Gmail
+                    </a>
+                    <a href="${mailtoUrl}" class="btn-small" style="display:flex;align-items:center;gap:6px;text-decoration:none;background:#f0f0f0;color:#555;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;">
+                        <i class="fa-solid fa-envelope"></i> Email Client
+                    </a>
+                </div>
+            </div>
+            <div style="background:#f8f8f8;border-radius:16px;padding:24px;border-left:4px solid var(--primary);">
+                <p style="font-size:15px;line-height:1.8;color:#333;margin:0;white-space:pre-wrap;">${escapeHtml(m.message || '')}</p>
+            </div>
+        </div>
+    `;
+    const header = $('#chatWindowHeader');
+    if (header) header.textContent = m.name || 'Message';
 }
 
 /* ===========================
@@ -1474,11 +1557,12 @@ async function promoteToOwner(userId) {
 
 async function handleCreateListing() {
     console.log("➕ [LISTING] Creating new listing (with media)...");
-    const title = $('#listTitle')?.value;
+    const title = $('#listTitle')?.value?.trim();
     const price = Number($('#listPrice')?.value || 0);
-    const desc = $('#listDesc')?.value;
+    const desc = $('#listDesc')?.value?.trim();
     const category = $('#listCategory')?.value;
     const ownerId = $('#selectedOwnerId')?.value || (CURRENT_PROFILE && CURRENT_PROFILE.id);
+    const isFeatured = document.getElementById('listFeatured')?.checked || false;
 
     const provinceId = $('#selProvince')?.value || null;
     const districtId = $('#selDistrict')?.value || null;
@@ -1486,92 +1570,138 @@ async function handleCreateListing() {
     const address = $('#listAddress')?.value || '';
 
     if (!title || !price || !desc || !ownerId) {
-        alert('Fill required fields');
+        toast('Please fill all required fields.', 'warning');
         return;
     }
 
-    // validate files
     const imagesInput = document.getElementById('listImageFiles');
     const videosInput = document.getElementById('listVideoFiles');
     const images = imagesInput ? Array.from(imagesInput.files || []) : [];
     const videos = videosInput ? Array.from(videosInput.files || []) : [];
 
-    if (images.length > 10) { alert('Max 10 images allowed'); return; }
-    if (videos.length > 3) { alert('Max 3 videos allowed'); return; }
+    if (images.length > 10) { toast('Max 10 images allowed.', 'warning'); return; }
+    if (videos.length > 3)  { toast('Max 3 videos allowed.', 'warning'); return; }
+
+    const createBtn = document.getElementById('createBtn');
+    if (createBtn) { createBtn.disabled = true; createBtn.textContent = 'Uploading...'; }
 
     try {
-        // 1) create listing row and get its id
+        // 1) Create listing row
+        toast('Creating listing...', 'info');
         const { data: created, error: createErr } = await _supabase
-        .from('listings')
-        .insert([{
-            owner_id: ownerId,
-            title,
-            description: desc,
-            price,
-            currency: 'RWF',
-            province_id: provinceId,
-            district_id: districtId,
-            sector_id: sectorId,
-            address,
-            category_slug: category,
-            status: 'pending',
-            availability_status: 'available'
-        }])
-        .select()
-        .single();
+            .from('listings')
+            .insert([{
+                owner_id: ownerId,
+                title,
+                description: desc,
+                price,
+                currency: 'RWF',
+                province_id: provinceId,
+                district_id: districtId,
+                sector_id: sectorId,
+                address,
+                category_slug: category,
+                status: 'pending',
+                availability_status: 'available',
+                featured: isFeatured
+            }])
+            .select()
+            .single();
 
         if (createErr) throw createErr;
-
         const listingId = created.id;
-        console.log('Created listing id:', listingId);
+        console.log('✅ Listing created, id:', listingId);
+
+        // Helper to clean filenames
+        const cleanName = (name) => name.replace(/[^a-zA-Z0-9.\-_]/g, '');
 
         // 2) Upload images
-        const uploadedImageRows = [];
         if (images.length) {
-        for (const file of images) {
-            const path = `${ownerId}/${listingId}/${Date.now()}-${file.name}`;
-            const { error: upErr } = await _supabase.storage.from('listing-images').upload(path, file, { upsert: false });
-            if (upErr) {
-            console.warn('Image upload failed for', file.name, upErr);
-            continue;
+            toast(`Uploading ${images.length} image(s)...`, 'info');
+            const uploadedImageRows = [];
+            for (const file of images) {
+                // MUST start with ownerId to pass your RLS policy!
+                const path = `${ownerId}/${listingId}/${Date.now()}_${cleanName(file.name)}`;
+                
+                // Using hyphenated bucket name 'listing-images'
+                const { error: upErr } = await _supabase.storage.from('listing-images').upload(path, file, { upsert: false });
+                
+                if (upErr) {
+                    console.error('❌ Image upload failed:', file.name, upErr.message);
+                    toast(`Image failed: ${file.name}`, 'error');
+                    continue;
+                }
+                
+                const { data: urlData } = _supabase.storage.from('listing-images').getPublicUrl(path);
+                // Database table is STILL 'listing_images' (underscore)
+                uploadedImageRows.push({ listing_id: listingId, image_url: urlData?.publicUrl, filename: file.name, mime_type: file.type });
+                console.log('✅ Image uploaded:', file.name);
             }
-            const { data: urlData } = await _supabase.storage.from('listing-images').getPublicUrl(path);
-            const publicUrl = urlData?.publicUrl || null;
-            uploadedImageRows.push({ listing_id: listingId, image_url: publicUrl, filename: file.name, mime_type: file.type });
+            if (uploadedImageRows.length) {
+                const { error: imgErr } = await _supabase.from('listing_images').insert(uploadedImageRows);
+                if (imgErr) toast('Failed to save image records: ' + imgErr.message, 'error');
+            }
+        // --- NETWORK CHECKS ---
+        if (!navigator.onLine) {
+            toast('No internet connection detected. Please check your Wi-Fi.', 'error');
+            if (createBtn) { createBtn.disabled = false; createBtn.textContent = 'Create Listing'; }
+            return;
         }
 
-        if (uploadedImageRows.length) {
-            const { error: imgInsertErr } = await _supabase.from('listing_images').insert(uploadedImageRows);
-            if (imgInsertErr) console.warn('listing_images insert error', imgInsertErr);
-        }
+        const networkListener = () => toast('Connection lost! Upload might fail.', 'error');
+        window.addEventListener('offline', networkListener);
+
+        // Warn them if it takes longer than 8 seconds
+        const slowUploadWarning = setTimeout(() => {
+            toast('This is taking longer than usual. Please do not close the window...', 'info', 6000);
+        }, 8000);
+
+        // ... (Keep your existing Database & Image Upload Logic exactly as is) ...
+
+        clearTimeout(slowUploadWarning);
+        window.removeEventListener('offline', networkListener);
+        
+        toast('✅ Listing created successfully!', 'success');
         }
 
         // 3) Upload videos
-        const uploadedVideoRows = [];
         if (videos.length) {
-        for (const file of videos) {
-            const path = `${ownerId}/${listingId}/${Date.now()}-${file.name}`;
-            const { error: upErr } = await _supabase.storage.from('listing-videos').upload(path, file, { upsert: false });
-            if (upErr) {
-            console.warn('Video upload failed for', file.name, upErr);
-            continue;
+            toast(`Uploading ${videos.length} video(s)...`, 'info');
+            const uploadedVideoRows = [];
+            for (const file of videos) {
+                // MUST start with ownerId to pass your RLS policy!
+                const path = `${ownerId}/${listingId}/${Date.now()}_${cleanName(file.name)}`;
+                
+                // Using hyphenated bucket name 'listing-videos'
+                const { error: upErr } = await _supabase.storage.from('listing-videos').upload(path, file, { upsert: false });
+                
+                if (upErr) {
+                    console.error('❌ Video upload failed:', file.name, upErr.message);
+                    toast(`Video failed: ${file.name}`, 'error');
+                    continue;
+                }
+                
+                const { data: urlData } = _supabase.storage.from('listing-videos').getPublicUrl(path);
+                // Database table is STILL 'listing_videos' (underscore)
+                uploadedVideoRows.push({ listing_id: listingId, video_url: urlData?.publicUrl, filename: file.name, mime_type: file.type });
+                console.log('✅ Video uploaded:', file.name);
             }
-            const { data: urlData } = await _supabase.storage.from('listing-videos').getPublicUrl(path);
-            const publicUrl = urlData?.publicUrl || null;
-            uploadedVideoRows.push({ listing_id: listingId, video_url: publicUrl, filename: file.name, mime_type: file.type });
+            if (uploadedVideoRows.length) {
+                const { error: vidErr } = await _supabase.from('listing_videos').insert(uploadedVideoRows);
+                if (vidErr) toast('Failed to save video records: ' + vidErr.message, 'error');
+            }
         }
 
-        if (uploadedVideoRows.length) {
-            const { error: vidInsertErr } = await _supabase.from('listing_videos').insert(uploadedVideoRows);
-            if (vidInsertErr) console.warn('listing_videos insert error', vidInsertErr);
-        }
-        }
+        toast('✅ Listing created successfully!', 'success');
+        closeModal('listingModal');
+        document.getElementById('listingForm').reset();
+        await loadListingsTable();
 
-        toast('Listing created! Pending approval.', 'success');
-        console.log('✅ Listing and media created');
     } catch (err) {
-        console.error('❌ [LISTING] Error creating listing:', err);
+        console.error('❌ [LISTING] Error:', err);
         toast('Failed to create listing: ' + (err.message || JSON.stringify(err)), 'error');
+    } finally {
+        if (createBtn) { createBtn.disabled = false; createBtn.textContent = 'Create Listing'; }
     }
 }
 
@@ -1592,14 +1722,14 @@ async function populatePromoListings() {
 
 async function handleLogout() {
     console.log("🚪 [AUTH] Logging out...");
-    
     try {
         await _supabase.auth.signOut();
+        toast("Logged out successfully. See you soon! 👋", "success");
         console.log("✅ [AUTH] Logged out successfully");
-        location.reload();
+        setTimeout(() => { window.location.href = "/"; }, 1500);
     } catch (err) {
         console.error("❌ [AUTH] Error logging out:", err);
-        location.reload();
+        toast("Logout failed: " + err.message, "error");
     }
 }
 
@@ -1636,6 +1766,286 @@ function escapeHtml(s) {
         "'": '&#39;'
     }[c]));
 }
+
+
+/* ===========================
+   EVENTS
+   =========================== */
+async function loadEventsTable() {
+    console.log("📅 [EVENTS] Loading events...");
+    const tbody = document.getElementById('eventsTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+
+    try {
+        let q = _supabase.from('events').select('id, title, event_date, location, owner_id, listing_id, created_at').order('event_date', { ascending: false }).limit(100);
+        if (CURRENT_ROLE === 'owner') q = q.eq('owner_id', CURRENT_PROFILE.id);
+
+        const { data, error } = await q;
+        if (error) throw error;
+        if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;">No events yet.</td></tr>'; return; }
+
+        // Fetch linked listing titles
+        const lids = [...new Set(data.map(e => e.listing_id).filter(Boolean))];
+        const lstMap = {};
+        if (lids.length) {
+            const { data: ls } = await _supabase.from('listings').select('id, title').in('id', lids);
+            (ls || []).forEach(l => lstMap[l.id] = l.title);
+        }
+
+        tbody.innerHTML = '';
+        data.forEach((ev, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td><strong>${escapeHtml(ev.title)}</strong></td>
+                <td>${ev.event_date || '—'}</td>
+                <td>${escapeHtml(ev.location || '—')}</td>
+                <td>
+                    ${CURRENT_ROLE === 'admin' ? `<button class="btn-small btn-danger" onclick="deleteEvent('${ev.id}')"><i class="fa-solid fa-trash"></i></button>` : ''}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        console.log("✅ [EVENTS] Table loaded");
+    } catch (err) {
+        console.error("❌ [EVENTS]", err);
+        tbody.innerHTML = `<tr><td colspan="5" style="color:red;">${err.message}</td></tr>`;
+    }
+}
+
+async function handleCreateEvent() {
+    const title = document.getElementById('evtTitle')?.value?.trim();
+    const eventDate = document.getElementById('evtDate')?.value;
+    const location = document.getElementById('evtLoc')?.value?.trim();
+
+    if (!title || !eventDate || !location) { toast('Fill all event fields.', 'warning'); return; }
+
+    const ownerId = CURRENT_PROFILE?.id || null;
+
+    try {
+        const { error } = await _supabase.from('events').insert([{
+            title, event_date: eventDate, location, owner_id: ownerId
+        }]);
+        if (error) throw error;
+        toast('Event created!', 'success');
+        closeModal('eventModal');
+        document.getElementById('eventForm')?.reset();
+        await loadEventsTable();
+    } catch (err) {
+        console.error("❌ [EVENTS] create", err);
+        toast('Failed to create event: ' + err.message, 'error');
+    }
+}
+
+async function deleteEvent(eventId) {
+    if (!confirm('Delete this event?')) return;
+    try {
+        const { error } = await _supabase.from('events').delete().eq('id', eventId);
+        if (error) throw error;
+        toast('Event deleted.', 'success');
+        await loadEventsTable();
+    } catch (err) {
+        toast('Failed to delete event: ' + err.message, 'error');
+    }
+}
+window.deleteEvent = deleteEvent;
+
+/* ===========================
+   PROMOTIONS
+   =========================== */
+async function loadPromotionsTable() {
+    console.log("🏷️ [PROMOS] Loading promotions...");
+    const tbody = document.getElementById('promotionsTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="8">Loading...</td></tr>';
+
+    try {
+        const { data, error } = await _supabase
+            .from('promotions')
+            .select('id, code, description, discount, listing_id, start_date, end_date, banner_url, created_at')
+            .order('created_at', { ascending: false })
+            .limit(100);
+        if (error) throw error;
+        if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;">No promotions yet.</td></tr>'; return; }
+
+        // Fetch listing titles
+        const lids = [...new Set(data.map(p => p.listing_id).filter(Boolean))];
+        const lstMap = {};
+        if (lids.length) {
+            const { data: ls } = await _supabase.from('listings').select('id, title').in('id', lids);
+            (ls || []).forEach(l => lstMap[l.id] = l.title);
+        }
+
+        tbody.innerHTML = '';
+        data.forEach((p, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td><strong>${escapeHtml(p.code || '—')}</strong></td>
+                <td>${p.banner_url ? `<img src="${escapeHtml(p.banner_url)}" style="width:60px;height:40px;object-fit:cover;border-radius:6px;">` : '—'}</td>
+                <td><span style="background:#fff3cd;color:#856404;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">${p.discount || 0}% OFF</span></td>
+                <td>${escapeHtml(lstMap[p.listing_id] || 'General')}</td>
+                <td>${escapeHtml(p.description || '—')}</td>
+                <td style="font-size:12px;">${p.start_date || '—'} → ${p.end_date || '—'}</td>
+                <td>
+                    ${CURRENT_ROLE === 'admin' ? `<button class="btn-small btn-danger" onclick="deletePromotion('${p.id}')"><i class="fa-solid fa-trash"></i></button>` : ''}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        console.log("✅ [PROMOS] Table loaded");
+    } catch (err) {
+        console.error("❌ [PROMOS]", err);
+        tbody.innerHTML = `<tr><td colspan="8" style="color:red;">${err.message}</td></tr>`;
+    }
+}
+
+async function handleCreatePromo() {
+    const code = document.getElementById('promoCode')?.value?.trim();
+    const discount = Number(document.getElementById('promoDiscount')?.value || 0);
+    const start = document.getElementById('promoStart')?.value;
+    const end = document.getElementById('promoEnd')?.value;
+    const desc = document.getElementById('promoDesc')?.value?.trim() || null;
+    const listingId = document.getElementById('promoListingId')?.value || null;
+    const imageFile = document.getElementById('promoImage')?.files?.[0] || null;
+
+    if (!code || !discount || !start || !end) { toast('Fill required promo fields.', 'warning'); return; }
+
+    const createBtn = document.getElementById('createPromoBtn');
+    if (createBtn) { createBtn.disabled = true; createBtn.textContent = 'Creating...'; }
+
+    try {
+        let bannerUrl = null;
+        if (imageFile) {
+            const path = `promos/${Date.now()}-${imageFile.name}`;
+            const { error: upErr } = await _supabase.storage.from('promotion-images').upload(path, imageFile, { upsert: false });
+            if (!upErr) {
+                const { data: urlData } = _supabase.storage.from('promotion-images').getPublicUrl(path);
+                bannerUrl = urlData?.publicUrl || null;
+            } else {
+                console.warn('Promo banner upload failed:', upErr.message);
+            }
+        }
+
+        const { error } = await _supabase.from('promotions').insert([{
+            code, discount, start_date: start, end_date: end,
+            description: desc, listing_id: listingId || null, banner_url: bannerUrl
+        }]);
+        if (error) throw error;
+        toast('Promotion created!', 'success');
+        closeModal('promotionModal');
+        document.getElementById('promoForm')?.reset();
+        await loadPromotionsTable();
+    } catch (err) {
+        console.error("❌ [PROMOS] create", err);
+        toast('Failed: ' + err.message, 'error');
+    } finally {
+        if (createBtn) { createBtn.disabled = false; createBtn.textContent = 'Create Promotion'; }
+    }
+}
+
+async function deletePromotion(promoId) {
+    if (!confirm('Delete this promotion?')) return;
+    try {
+        const { error } = await _supabase.from('promotions').delete().eq('id', promoId);
+        if (error) throw error;
+        toast('Promotion deleted.', 'success');
+        await loadPromotionsTable();
+    } catch (err) {
+        toast('Failed to delete: ' + err.message, 'error');
+    }
+}
+window.deletePromotion = deletePromotion;
+
+/* ===========================
+   SETTINGS
+   =========================== */
+async function handleSaveSettings() {
+    const newEmail = document.getElementById('newEmail')?.value?.trim();
+    const newPassword = document.getElementById('newPassword')?.value;
+
+    if (!newEmail && !newPassword) {
+        toast('Enter a new email or password.', 'warning');
+        return;
+    }
+
+    const btn = document.querySelector('#settingsForm button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+    try {
+        const updates = {};
+        if (newEmail) updates.email = newEmail;
+        if (newPassword) updates.password = newPassword;
+
+        const { error } = await _supabase.auth.updateUser(updates);
+        if (error) throw error;
+
+        // Update profile email if changed
+        if (newEmail && CURRENT_USER) {
+            await _supabase.from('profiles').update({ email: newEmail }).eq('id', CURRENT_USER.id);
+            const el = document.getElementById('adminEmailDisplay');
+            if (el) el.textContent = newEmail;
+        }
+
+        toast(newPassword ? 'Password updated!' : 'Email updated! Check your inbox to confirm.', 'success');
+        document.getElementById('newEmail').value = '';
+        document.getElementById('newPassword').value = '';
+    } catch (err) {
+        console.error("❌ [SETTINGS]", err);
+        toast('Failed: ' + err.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Save Changes'; }
+    }
+}
+
+/* expose new functions globally */
+window.loadEventsTable = loadEventsTable;
+window.handleCreateEvent = handleCreateEvent;
+window.loadPromotionsTable = loadPromotionsTable;
+window.handleCreatePromo = handleCreatePromo;
+window.handleSaveSettings = handleSaveSettings;
+
+/* ===========================
+    GLOBAL EXPORTS
+    =========================== */
+window.approveListing = approveListing;
+window.toggleListingAvailability = toggleListingAvailability;
+window.approveBooking = approveBooking;
+window.demoMarkPaid = demoMarkPaid;
+window.promoteToOwner = promoteToOwner;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.filterTable = filterTable;
+window.togglePanels = togglePanels;
+
+console.log("✨ [ADMIN] Dashboard.js loaded and ready!");
+
+/* ═══════════════════════════════════
+   TOGGLE FEATURED
+   ═══════════════════════════════════ */
+async function toggleFeatured(listingId, isFeatured) {
+    const { error } = await _supabase
+        .from('listings')
+        .update({ featured: isFeatured })
+        .eq('id', listingId);
+
+    if (error) {
+        toast('Failed to update featured status: ' + error.message, 'error');
+        // Revert the checkbox visually
+        const cb = document.getElementById('feat_' + listingId);
+        if (cb) cb.checked = !isFeatured;
+    } else {
+        toast(isFeatured ? '⭐ Added to featured listings!' : 'Removed from featured listings.', 'success');
+    }
+}
+
+/* expose new functions globally */
+window.loadEventsTable = loadEventsTable;
+window.handleCreateEvent = handleCreateEvent;
+window.loadPromotionsTable = loadPromotionsTable;
+window.handleCreatePromo = handleCreatePromo;
+window.handleSaveSettings = handleSaveSettings;
 
 /* ===========================
     GLOBAL EXPORTS
