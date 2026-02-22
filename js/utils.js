@@ -1,33 +1,36 @@
-// The "Vibe Check" function you requested
-function isUserLoggedIn() {
-    // Manually flip this to true or false to test your UI
-    return true; 
-}
+/**
+ * Utilities: small, focused helpers used across the UI
+ */
 
-// Function to run on every page load
-function initAuthUI() {
-    const signInBtn = document.getElementById('signInBtn');
-    const userIcon = document.getElementById('userIcon');
+console.log("🛠️ [UTILS] Loading utilities...");
 
-    if (!signInBtn || !userIcon) return; // Safety check
+const UTILS = {
+    formatMoney(amount) {
+        if (amount == null) return `0 ${CONFIG.CURRENCY}`;
+        return new Intl.NumberFormat('en-RW').format(amount) + ` ${CONFIG.CURRENCY}`;
+    },
 
-    if (isUserLoggedIn()) {
-        signInBtn.classList.add('hidden');
-        userIcon.classList.remove('hidden');
-    } else {
-        signInBtn.classList.remove('hidden');
-        userIcon.classList.add('hidden');
+    formatDate(dateString) {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+    },
+
+    getRandomColor() {
+        const colors = ['#EB6753', '#3498db', '#9b59b6', '#2ecc71', '#f1c40f', '#e67e22', '#95a5a6'];
+        return colors[Math.floor(Math.random() * colors.length)];
+    },
+
+    debounce(fn, wait = 220) {
+        let t;
+        return function(...args) {
+            clearTimeout(t);
+            t = setTimeout(() => fn.apply(this, args), wait);
+        };
     }
-}
+};
 
-// Mobile Menu Logic
-function toggleMenu() {
-    document.getElementById("navWrapper").classList.toggle("active");
-}
-
-// Run the UI check when the script loads
-document.addEventListener('DOMContentLoaded', initAuthUI);
-
-function toggleMenu() {
-document.getElementById("navWrapper").classList.toggle("active");
-}
+console.log("✅ [UTILS] Utilities loaded");
