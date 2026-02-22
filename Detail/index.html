@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listing Detail - AfriStay</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Oleo+Script+Swash+Caps:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/Style/style.css">
+    <style>
+        :root { --primary: #EB6753; }
+        body { background: #f5f5f5; }
+
+        .page-body { max-width: 1100px; margin: 0 auto; padding: 110px 24px 72px; }
+
+        /* breadcrumb */
+        .breadcrumb { display: flex; align-items: center; gap: 8px; color: #bbb; font-size: 13px; margin-bottom: 28px; }
+        .breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 600; transition: opacity 0.2s; }
+        .breadcrumb a:hover { opacity: 0.75; }
+        .breadcrumb i { font-size: 10px; color: #ddd; }
+
+        /* layout */
+        .detail-grid { display: grid; grid-template-columns: 1fr 370px; gap: 36px; align-items: start; }
+
+        /* gallery */
+        .gallery-main { border-radius: 20px; overflow: hidden; background: #eee; position: relative; margin-bottom: 12px; }
+        .gallery-main img { width: 100%; height: 460px; object-fit: cover; display: block; cursor: zoom-in; transition: transform 0.35s; }
+        .gallery-main:hover img { transform: scale(1.02); }
+        .gallery-main .no-img { width: 100%; height: 460px; display: flex; align-items: center; justify-content: center; }
+        .thumbs-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .thumb { width: 88px; height: 64px; object-fit: cover; border-radius: 10px; cursor: pointer; border: 2.5px solid transparent; opacity: 0.68; transition: all 0.2s; }
+        .thumb:hover, .thumb.active { border-color: var(--primary); opacity: 1; }
+
+        /* text sections */
+        .listing-title { font-size: 28px; font-weight: 800; color: #1a1a1a; line-height: 1.25; margin: 24px 0 12px; }
+        .meta-chips { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+        .meta-chip { display: flex; align-items: center; gap: 6px; background: #f5f5f5; padding: 5px 13px; border-radius: 20px; font-size: 13px; color: #666; }
+        .meta-chip i { color: var(--primary); font-size: 12px; }
+        .section-title { font-size: 17px; font-weight: 700; color: #1a1a1a; margin: 28px 0 10px; padding-bottom: 8px; border-bottom: 2px solid #f0f0f0; }
+        .desc-text { font-size: 15px; line-height: 1.85; color: #555; }
+
+        /* info card */
+        .info-card { background: #fff; border-radius: 20px; box-shadow: 0 8px 40px rgba(0,0,0,0.1); padding: 28px; position: sticky; top: 100px; }
+        .price-line { font-size: 32px; font-weight: 800; color: var(--primary); line-height: 1.1; margin-bottom: 4px; }
+        .price-line small { font-size: 16px; font-weight: 500; }
+        .avail-pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 18px; border-radius: 50px; font-size: 13px; font-weight: 700; margin: 14px 0 22px; }
+        .avail-pill.available { background: #d4f5e4; color: #1a9e5a; }
+        .avail-pill.unavailable, .avail-pill.booked { background: #fde8e8; color: #c0392b; }
+        .card-divider { height: 1px; background: #f2f2f2; margin: 16px 0; }
+        .book-btn { width: 100%; padding: 16px; background: var(--primary); color: #fff; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 8px; transition: all 0.3s; }
+        .book-btn:hover:not(:disabled) { transform: translateY(-2px); filter: drop-shadow(0 6px 18px rgba(235,103,83,0.45)); }
+        .book-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+
+        /* lightbox */
+        .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.93); z-index: 9999; align-items: center; justify-content: center; }
+        .lightbox.open { display: flex; }
+        .lightbox img { max-width: 92vw; max-height: 90vh; object-fit: contain; border-radius: 10px; }
+        .lb-close { position: absolute; top: 20px; right: 26px; color: #fff; font-size: 40px; cursor: pointer; opacity: 0.8; line-height: 1; }
+        .lb-close:hover { opacity: 1; }
+
+        /* skeleton */
+        .skeleton { background: linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 10px; }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+        @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } .info-card { position: static; } }
+        @media (max-width: 600px) { .page-body { padding: 80px 14px 48px; } .gallery-main img, .gallery-main .no-img { height: 260px; } .listing-title { font-size: 22px; } }
+    </style>
+</head>
+<body>
+
+        <nav id="navbar">
+            <div class="logo-area">
+                <a href="/"><h1>AfriStay</h1></a>
+            </div>
+    
+            <div class="nav-wrapper" id="navWrapper">
+                <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
+                <div class="nav-center">
+                    <ul class="nav-links">
+                        <li><a href="/index.html" class = "active">Home</a></li>
+                        <li><a href="/Listings/">Listings</a></li>
+                        <li><a href="/About">About</a></li>
+                        <li><a href="/Contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="nav-right">
+                    <a href="/Favorites" class="icon-link"><i class="fa-regular fa-heart"></i></a>
+                    <a href="/Auth" id="auth-btn" class="signin-btn">Sign In</a> 
+                </div>
+            </div>
+            <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
+        </nav>
+
+<div class="page-body">
+    <div class="breadcrumb">
+        <a href="/Listings"><i class="fa-solid fa-arrow-left"></i> Listings</a>
+        <i class="fa-solid fa-chevron-right"></i>
+        <span id="breadTitle">Loading...</span>
+    </div>
+
+    <div id="skelEl" class="detail-grid">
+        <div>
+            <div class="skeleton" style="height:460px;border-radius:20px;margin-bottom:12px;"></div>
+            <div style="display:flex;gap:10px;margin-bottom:28px;">
+                <div class="skeleton" style="width:88px;height:64px;border-radius:10px;"></div>
+                <div class="skeleton" style="width:88px;height:64px;border-radius:10px;"></div>
+                <div class="skeleton" style="width:88px;height:64px;border-radius:10px;"></div>
+            </div>
+            <div class="skeleton" style="height:28px;width:72%;margin-bottom:14px;"></div>
+            <div class="skeleton" style="height:15px;width:90%;margin-bottom:8px;"></div>
+            <div class="skeleton" style="height:15px;width:65%;"></div>
+        </div>
+        <div class="info-card">
+            <div class="skeleton" style="height:36px;width:58%;margin-bottom:14px;"></div>
+            <div class="skeleton" style="height:28px;width:42%;border-radius:50px;margin-bottom:24px;"></div>
+            <div class="skeleton" style="height:14px;width:100%;margin-bottom:10px;"></div>
+            <div class="skeleton" style="height:14px;width:100%;margin-bottom:10px;"></div>
+            <div class="skeleton" style="height:52px;border-radius:14px;margin-top:14px;"></div>
+        </div>
+    </div>
+
+    <div id="contentEl" class="detail-grid" style="display:none;">
+        <div>
+            <div id="listingGallery"></div>
+
+            <h1 id="listingTitle" class="listing-title"></h1>
+            <div class="meta-chips">
+                <div class="meta-chip"><i class="fa-solid fa-tag"></i> <span id="listingCategory"></span></div>
+                <div class="meta-chip"><i class="fa-solid fa-location-dot"></i> <span id="listingLocation"></span></div>
+                <div class="meta-chip" id="listingRatingBadge"></div>
+            </div>
+
+            <div class="section-title">Description</div>
+            <p id="listingDescription" class="desc-text"></p>
+
+            <div class="section-title" id="landmarkTitle" style="display:none;">Directions / Landmark</div>
+            <p id="listingLandmark" class="desc-text" style="display:none;"></p>
+
+            <div class="section-title" id="reviewsSection">Reviews</div>
+            <div id="reviewsList"></div>
+            <div id="reviewFormSection" style="margin-top: 24px; padding: 20px; background: #fff; border-radius: 14px; border: 1px solid #eee;"></div>
+        </div>
+
+        <div>
+            <div class="info-card">
+                <div id="listingPrice" class="price-line"></div>
+                <div id="listingAvailability" class="avail-pill"></div>
+                <div class="card-divider"></div>
+
+                <div id="bookingForm">
+                    <label style="font-size: 13px; color: #666; font-weight: 600; margin-bottom: 6px; display: block;">Select Dates</label>
+                    <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                        <input type="date" id="bookingStartDate" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Inter', sans-serif;">
+                        <input type="date" id="bookingEndDate" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Inter', sans-serif;">
+                    </div>
+                    <div id="bookingTotal" style="font-size: 15px; font-weight: 600; text-align: center; margin-bottom: 16px; color: #222;"></div>
+                    <button id="bookingBtn" class="book-btn">
+                        <i class="fa-regular fa-calendar-check"></i> Book Now
+                    </button>
+                    <div id="bookingStatus" style="font-size: 13px; text-align: center; margin-top: 12px; font-weight: 500;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLb()">
+    <span class="lb-close" onclick="closeLb()">&times;</span>
+    <img id="lbImg" src="" alt="">
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/config.js"></script>
+<script src="/js/detail.js"></script>
+</body>
+</html>
