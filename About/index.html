@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Home Page - AfriStay</title>
+        
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <link href="https://fonts.googleapis.com/css2?family=Oleo+Script+Swash+Caps:wght@400;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+        
+        <link rel="stylesheet" href="/Style/style.css">
+        <link rel="stylesheet" href="/Style/about.css">
+    </head>
+    <body>
+        <nav id="navbar">
+            <div class="logo-area">
+                <a href="/"><h1>AfriStay</h1></a>
+            </div>
+    
+            <div class="nav-wrapper" id="navWrapper">
+                <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
+                <div class="nav-center">
+                    <ul class="nav-links">
+                        <li><a href="/">Home</a></li>
+                        <li><a href="/Listings">Listings</a></li>
+                        <li><a href="/About" class = "active">About</a></li>
+                        <li><a href="/Contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="nav-right">
+                    <a href="/Favorites" class="icon-link"><i class="fa-regular fa-heart"></i></a>
+                    <a href="/Auth" id="auth-btn" class="signin-btn">Sign In</a> 
+                </div>
+            </div>
+            <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="about-hero">
+            <div class="hero-content">
+                <span class="hero-tag">About AfriStay</span>
+                <h1>Connecting Hearts to Rwanda</h1>
+                <p>We believe every journey tells a story, and every stay should feel like home.</p>
+            </div>
+        </section>
+
+        <!-- Story Section -->
+        <section class="story-section">
+            <div class="story-container">
+                <div class="story-image">
+                    <img src="/Pictures/Rwanda.jpg" alt="Rwanda landscape">
+                </div>
+                <div class="story-content">
+                    <h2>Our Story: <span class="highlight">Born from Passion</span></h2>
+                    <p>AfriStay was founded in 2020 with a simple yet powerful vision: to make authentic Rwandan experiences accessible to travelers from around the world while supporting local communities.</p>
+                    <p>What started as a small collection of verified homes in Kigali has grown into Rwanda's most trusted platform for property rentals and vehicle services. We've helped thousands of travelers discover the Land of a Thousand Hills in the most genuine way possible.</p>
+                    <p>Today, we're proud to partner with local hosts, property owners, and service providers who share our commitment to excellence, authenticity, and sustainable tourism that benefits everyone.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mission & Vision -->
+        <section class="mission-vision-section">
+            <div class="mission-vision-container">
+                <div class="mission-card">
+                    <h3><i class="fa-solid fa-bullseye"></i> Our Mission</h3>
+                    <p>To empower travelers with seamless access to authentic Rwandan experiences while creating economic opportunities for local communities through verified, high-quality properties and services.</p>
+                </div>
+                <div class="vision-card">
+                    <h3><i class="fa-solid fa-eye"></i> Our Vision</h3>
+                    <p>To become Africa's leading platform for authentic travel experiences, setting the standard for trust, quality, and community-driven hospitality across the continent.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Values Section -->
+        <section class="values-section">
+            <div class="values-container">
+                <div class="section-title">
+                    <h2>Our Core Values</h2>
+                    <p>The principles that guide everything we do at AfriStay</p>
+                </div>
+                <div class="values-grid">
+                    <div class="value-card">
+                        <div class="value-icon">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <h4>Trust & Safety</h4>
+                        <p>Every property is verified, every host vetted, and every transaction secured to ensure complete peace of mind.</p>
+                    </div>
+                    <div class="value-card">
+                        <div class="value-icon">
+                            <i class="fa-solid fa-heart"></i>
+                        </div>
+                        <h4>Authenticity</h4>
+                        <p>We celebrate genuine Rwandan culture and connect you with real local experiences, not tourist traps.</p>
+                    </div>
+                    <div class="value-card">
+                        <div class="value-icon">
+                            <i class="fa-solid fa-leaf"></i>
+                        </div>
+                        <h4>Sustainability</h4>
+                        <p>We're committed to responsible tourism that preserves Rwanda's beauty and benefits local communities.</p>
+                    </div>
+                    <div class="value-card">
+                        <div class="value-icon">
+                            <i class="fa-solid fa-star"></i>
+                        </div>
+                        <h4>Excellence</h4>
+                        <p>From property standards to customer service, we hold ourselves to the highest quality in everything.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats Section -->
+        <section class="stats-section">
+            <div class="stats-container">
+                <div class="stat-item">
+                    <h3>500+</h3>
+                    <p>Verified Properties</p>
+                </div>
+                <div class="stat-item">
+                    <h3>12K+</h3>
+                    <p>Happy Travelers</p>
+                </div>
+                <div class="stat-item">
+                    <h3>200+</h3>
+                    <p>Local Partners</p>
+                </div>
+                <div class="stat-item">
+                    <h3>4.8</h3>
+                    <p>Average Rating</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Team Section -->
+        <section class="team-section">
+            <div class="team-container">
+                <div class="section-title">
+                    <h2>Meet Our Team</h2>
+                    <p>The passionate people behind AfriStay's success</p>
+                </div>
+                <div class="team-grid">
+                    <div class="team-card">
+                        <div class="team-image">
+                            <img src="/Pictures/emma.jpg" alt="Team member">
+                        </div>
+                        <h4>Emma Butera</h4>
+                        <p class="role">Founder & CEO</p>
+                        <p>Passionate about sustainable tourism and community development in Rwanda.</p>
+                    </div>
+                    <div class="team-card">
+                        <div class="team-image">
+                            <img src="/Pictures/amina.jpg" alt="Team member">
+                        </div>
+                        <h4>Amina Keza</h4>
+                        <p class="role">Head of Operations</p>
+                        <p>Ensuring seamless experiences for every guest and partner across our platform.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        
+
+        <!-- ── FOOTER ── -->
+        <footer class="main-footer">
+            
+            <!-- CTA Banner -->
+            <div class="footer-cta">
+                <div class="cta-content">
+                    <h2>Ready to Experience Rwanda?</h2>
+                    <p>Find your perfect stay or vehicle today and start your authentic Rwandan adventure.</p>
+                </div>
+                <div class="cta-actions">
+                    <a href="#" class="cta-btn">Start Exploring</a>
+                    <div class="cta-phone">
+                        <span>Call us anytime</span>
+                        <strong>+250 788 123 456</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Footer Content -->
+            <div class="footer-content">
+                <div class="footer-grid">
+
+                    <!-- Brand Column -->
+                    <div class="footer-brand">
+                        <h2>AfriStay</h2>
+                        <p>Your trusted platform for authentic stays and seamless travel experiences across Rwanda's most beautiful destinations.</p>
+                        <div class="social-links">
+                            <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+                            <a href="#" aria-label="Twitter"><i class="fa-brands fa-twitter"></i></a>
+                            <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                            <a href="#" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+                        </div>
+                    </div>
+
+                    <!-- Quick Links -->
+                    <div class="footer-column">
+                        <h4>Quick Links</h4>
+                        <ul>
+                            <li><a href="/">Home</a></li>
+                            <li><a href="/Listings">Listings</a></li>
+                            <li><a href="/About">About </a></li>
+                            <li><a href="/Contact">Contact</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- Services -->
+                    <div class="footer-column">
+                        <h4>Services</h4>
+                        <ul>
+                            <li><a href="#">Property Rentals</a></li>
+                            <li><a href="#">Vehicle Hire</a></li>
+                            <li><a href="#">Travel Planning</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- Newsletter -->
+                    <div class="footer-column">
+                        <h4>Stay Updated</h4>
+                        <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.9rem; line-height: 1.6; margin-bottom: 15px;">Subscribe to get special offers and travel tips.</p>
+                        <div class="newsletter-form">
+                            <div class="newsletter-input">
+                                <input type="email" placeholder="Your email address" required>
+                                <button type="submit">Subscribe</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Footer Bottom -->
+            <div class="footer-bottom">
+                <div class="footer-bottom-content">
+                    <p class="copyright">&copy; 2024 AfriStay. All rights reserved. Made with care in Rwanda.</p>
+                    <div class="footer-bottom-links">
+                        <a href="#">Privacy Policy</a>
+                        <a href="#">Terms of Service</a>
+                        <a href="#">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+
+        </footer>
+
+    </body>
+</html>
+
