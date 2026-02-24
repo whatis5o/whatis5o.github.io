@@ -33,7 +33,7 @@ body{
 
 .slider-wrapper {
     padding: 100px 0; /* Space between Hero and Slider */
-    background-color: #c8a97a;
+    background-color: #16213e;
     min-height: 600px; /* Adjust based on your slider design */
     
 }
@@ -961,5 +961,6 @@ body{
         justify-content: center;
     }
 }
+
 
 
