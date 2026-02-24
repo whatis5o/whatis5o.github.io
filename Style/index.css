@@ -5,10 +5,10 @@
 }
 
 :root {
-    --green-dark: #1a2f1e;
+    --green-dark: #16213e;
     --green-mid: #2d5233;
-    --amber: #c47f2a;
-    --amber-light: #e8a94a;
+    --amber: #EB6753;
+    --amber-light: #EB6753;
     --cream: #f8f4ee;
     --text-dark: #1a1a1a;
     --text-muted: #7a7a6e;
@@ -961,4 +961,5 @@ body{
         justify-content: center;
     }
 }
+
 
