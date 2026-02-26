@@ -226,8 +226,8 @@ body{
 
 /* Buttons */
 .btn { padding: 12px 30px; font-size: clamp(0.85rem, 1.5vw, 1rem); border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block; cursor: pointer; border: none; }
-.btn-primary { background: var(--primary); color: white; }
-.btn-outline { border: 2px solid white; color: white; }
+.btn-primary { background: var(--primary); color: black; background-color: white;}
+.btn-outline {color: white; background-color: #EB6753;  }
 .btn-pill { border: 1px solid #ccc; background: white; padding: 8px 20px; border-radius: 20px; }
 
 .why-section {

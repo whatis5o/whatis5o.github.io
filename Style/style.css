@@ -246,16 +246,41 @@
     color: #fff; padding: 4px 10px; border-radius: 20px;
     font-size: 11px; font-weight: 600; text-transform: uppercase;
 }
+/* ───── SHARED PROPERTY CARDS ───── */
 .card-heart {
-    position: absolute; top: 12px; right: 12px;
-    background: rgba(255,255,255,0.92); backdrop-filter: blur(4px);
-    width: 34px; height: 34px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: all 0.2s; z-index: 2;
+    position: absolute; 
+    top: 12px; 
+    right: 12px;
+    background: transparent; 
+    width: 36px; /* Slightly larger to give the icon room to bounce */
+    height: 36px; 
+    border-radius: 50%;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    cursor: pointer; 
+    z-index: 2;
+    /* Removed transition from here, just like .icon-link */
 }
-.card-heart:hover { background: #EB6753; }
-.card-heart:hover i { color: #fff; }
-.card-heart i { color: #EB6753; font-size: 14px; transition: color 0.2s; }
+
+.card-heart i { 
+    color: #EB6753; 
+    font-size: 24px; /* Scaled slightly to fit the circle */
+    display: inline-block;
+    transition: all 0.3s ease; /* The transition lives on the moving element */
+}
+
+/* Apply the hover effect to the 'i' tag when the background is hovered */
+.card-heart:hover i {
+    transform: translateY(-2px) scale(1.15); /* Controlled growth and bounce */
+    filter: drop-shadow(0 4px 10px rgba(235, 103, 83, 0.4));
+}
+
+/* Magically fill the heart to solid on hover, just like the nav link! */
+.card-heart:hover .fa-heart::before { 
+    content: "\f004"; 
+    font-weight: 900; 
+}
 .avail-strip {
     position: absolute; bottom: 0; left: 0; right: 0;
     padding: 5px 14px; font-size: 11px; font-weight: 700; color: #fff; text-align: right; text-transform: capitalize;
@@ -283,3 +308,39 @@
     transition: all 0.3s; font-family: 'Inter', sans-serif;
 }
 .details-btn:hover { transform: translateY(-2px); filter: drop-shadow(0 5px 12px rgba(235,103,83,0.4)); }
+/* ───── TOAST NOTIFICATIONS ───── */
+#toast-container {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none; /* Let clicks pass through */
+}
+
+.toast {
+    background: rgba(26, 47, 30, 0.95); /* var(--green-dark) */
+    color: white;
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast i { color: #EB6753; font-size: 16px; }
+.toast a { color: #e8a94a; text-decoration: underline; pointer-events: auto; margin-left: 5px; }
