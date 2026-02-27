@@ -415,36 +415,32 @@
             .properties-grid { grid-template-columns: 1fr; }
             .cat-btn { padding: 8px 14px; font-size: 12px; }
         }
-        .full-logo {
-                margin-top: 40px;
-                height: 350px;
-                width: auto;
-        }
     </style>
 </head>
 <body>
-    <nav id="navbar">
-        <div class="logo-area">
-            <a href="/"><img src="/Pictures/light-afri.svg" alt="AfriStay" class="full-logo"></a>
-        </div>
-
-        <div class="nav-wrapper" id="navWrapper">
-            <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
-            <div class="nav-center">
-                <ul class="nav-links">
-                    <li><a href="/index.html">Home</a></li>
-                    <li><a href="/Listings" class = "active">Listings</a></li>
-                    <li><a href="/About">About</a></li>
-                    <li><a href="/Contact">Contact</a></li>
-                </ul>
+            <nav id="navbar">
+            <div class="logo-area">
+                <a href="/"><img src="/Pictures/light-afri1.png" alt="AfriStay" class="full-logo"></a>
             </div>
-            <div class="nav-right">
-                <a href="/Favorites" class="icon-link"><i class="fa-regular fa-heart"></i></a>
-                <a href="/Auth" id="auth-btn" class="signin-btn">Sign In</a> 
+    
+            <div class="nav-wrapper" id="navWrapper">
+                <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
+                <div class="nav-center">
+                    <ul class="nav-links">
+                        <li><a href="/">Home</a></li>
+                        <li><a href="/Listings" class = "active">Listings</a></li>
+                        <li><a href="/Events/">Events</a></li>
+                        <li><a href="/About">About</a></li>
+                        <li><a href="/Contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="nav-right">
+                    <a href="/Favorites" class="icon-link"><i class="fa-regular fa-heart"></i></a>
+                    <a href="/Auth" id="auth-btn" class="signin-btn">Sign In</a> 
+                </div>
             </div>
-        </div>
-        <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
-    </nav>
+            <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
+        </nav>
 
 <!-- HERO -->
     <section class="hero">

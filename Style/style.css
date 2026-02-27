@@ -19,9 +19,14 @@
     padding: 0 40px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: space-evenly;
     z-index: 1000;
 }
+.full-logo {
+    margin-top: 18px;
+    height: 40px;
+    width: auto;
+} 
 
 .logo-area { flex: 1; }
 .logo-area a { text-decoration: none; }
@@ -45,7 +50,7 @@
     flex: 2; 
     display: flex;
     justify-content: space-evenly;
-    margin-left: 120px;
+    margin-left: 100px;
 }
 
 .nav-right {

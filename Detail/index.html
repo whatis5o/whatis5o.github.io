@@ -64,26 +64,22 @@
 
         @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } .info-card { position: static; } }
         @media (max-width: 600px) { .page-body { padding: 80px 14px 48px; } .gallery-main img, .gallery-main .no-img { height: 260px; } .listing-title { font-size: 22px; } }
-        .full-logo {
-                margin-top: 40px;
-                height: 350px;
-                width: auto;
-        }
     </style>
 </head>
 <body>
 
         <nav id="navbar">
             <div class="logo-area">
-                <a href="/"><img src="/Pictures/light-afri.svg" alt="AfriStay" class="full-logo"></a>
+                <a href="/"><img src="/Pictures/light-afri1.png" alt="AfriStay" class="full-logo"></a>
             </div>
     
             <div class="nav-wrapper" id="navWrapper">
                 <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
                 <div class="nav-center">
                     <ul class="nav-links">
-                        <li><a href="/" >Home</a></li>
-                        <li><a href="/Listings/">Listings</a></li>
+                        <li><a href="/">Home</a></li>
+                        <li><a href="/Listings" class = "active">Listings</a></li>
+                        <li><a href="/Events/">Events</a></li>
                         <li><a href="/About">About</a></li>
                         <li><a href="/Contact">Contact</a></li>
                     </ul>

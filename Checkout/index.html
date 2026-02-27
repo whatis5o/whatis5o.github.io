@@ -67,33 +67,33 @@
 
         @media (max-width: 768px) { .checkout-grid { grid-template-columns: 1fr; } .payment-card { position: static; } }
         @media (max-width: 500px) { .date-row { flex-direction: column; } .method-grid { grid-template-columns: 1fr; } }
-        .full-logo {
-                margin-top: 40px;
-                height: 350px;
-                width: auto;
-        }
     </style>
 </head>
 <body>
 
-<nav id="navbar">
-    <div class="logo-area"><a href="/"><img src="/Pictures/light-afri.svg" alt="AfriStay" class="full-logo"></a></div>
-    <div class="nav-wrapper" id="navWrapper">
-        <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
-        <div class="nav-center">
-            <ul class="nav-links">
-                <li><a href="/">Home</a></li>
-                <li><a href="/Listings">Listings</a></li>
-                <li><a href="/Contact">Contact</a></li>
-            </ul>
-        </div>
-        <div class="nav-right">
-            <a href="/Favorites" class="icon-link"><i class="fa-regular fa-heart"></i></a>
-            <a href="/Auth" id="auth-btn" class="signin-btn">Sign In</a>
-        </div>
-    </div>
-    <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
-</nav>
+        <nav id="navbar">
+            <div class="logo-area">
+                <a href="/"><img src="/Pictures/light-afri1.png" alt="AfriStay" class="full-logo"></a>
+            </div>
+    
+            <div class="nav-wrapper" id="navWrapper">
+                <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
+                <div class="nav-center">
+                    <ul class="nav-links">
+                        <li><a href="/" class = "active">Home</a></li>
+                        <li><a href="/Listings">Listings</a></li>
+                        <li><a href="/Events/">Events</a></li>
+                        <li><a href="/About">About</a></li>
+                        <li><a href="/Contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="nav-right">
+                    <a href="/Favorites" class="icon-link"><i class="fa-regular fa-heart"></i></a>
+                    <a href="/Auth" id="auth-btn" class="signin-btn">Sign In</a> 
+                </div>
+            </div>
+            <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
+        </nav>
 
 <div class="page-body">
     <a href="javascript:history.back()" class="back-link">
