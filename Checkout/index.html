@@ -67,12 +67,17 @@
 
         @media (max-width: 768px) { .checkout-grid { grid-template-columns: 1fr; } .payment-card { position: static; } }
         @media (max-width: 500px) { .date-row { flex-direction: column; } .method-grid { grid-template-columns: 1fr; } }
+        .full-logo {
+                margin-top: 40px;
+                height: 350px;
+                width: auto;
+        }
     </style>
 </head>
 <body>
 
 <nav id="navbar">
-    <div class="logo-area"><a href="/"><h1>AfriStay</h1></a></div>
+    <div class="logo-area"><a href="/"><img src="/Pictures/light-afri.svg" alt="AfriStay" class="full-logo"></a></div>
     <div class="nav-wrapper" id="navWrapper">
         <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
         <div class="nav-center">
