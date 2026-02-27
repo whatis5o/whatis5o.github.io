@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event — AfriStay</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Oleo+Script+Swash+Caps:wght@400;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/Style/style.css">
+    <style>
+        :root { --primary: #EB6753; }
+        body { background: #f5f5f5; }
+
+        .page-wrap {
+            max-width: 1260px; margin: 0 auto;
+            padding: 96px 24px 80px;
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 32px;
+            align-items: start;
+        }
+
+        /* ── LEFT ── */
+        /* Gallery */
+        .gallery { border-radius: 20px; overflow: hidden; margin-bottom: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .gal-main { height: 400px; overflow: hidden; background: #e8e8e8; position: relative; }
+        .gal-main img { width:100%;height:100%;object-fit:cover;display:block;transition:opacity .3s; }
+        .gal-main .no-img { width:100%;height:100%;display:flex;align-items:center;justify-content:center; }
+        .gal-thumbs { display:flex;gap:8px;padding:10px;background:#fff;flex-wrap:wrap; }
+        .gal-thumb {
+            width:76px;height:58px;border-radius:8px;overflow:hidden;
+            cursor:pointer;border:2px solid transparent;transition:border-color .2s;flex-shrink:0;
+        }
+        .gal-thumb.active { border-color:var(--primary); }
+        .gal-thumb img { width:100%;height:100%;object-fit:cover; }
+
+        /* Info card */
+        .ev-info {
+            background:#fff;border-radius:20px;padding:30px;
+            box-shadow:0 4px 20px rgba(0,0,0,0.08);
+        }
+        .ev-title { font-size:clamp(1.6rem,3.5vw,2.2rem);font-weight:800;color:#1a1a1a;margin:0 0 18px;line-height:1.2; }
+        .chips { display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px; }
+        .chip {
+            display:flex;align-items:center;gap:7px;
+            background:#fff0ee;color:var(--primary);
+            padding:8px 14px;border-radius:30px;font-size:13px;font-weight:600;
+        }
+        .chip i { font-size:13px; }
+        .ev-desc-text { font-size:15px;color:#555;line-height:1.8;margin:0;white-space:pre-wrap; }
+
+        /* ── RIGHT SIDEBAR ── */
+        .sidebar { position:sticky;top:88px; }
+        .sug-box {
+            background:#fff;border-radius:20px;overflow:hidden;
+            box-shadow:0 4px 20px rgba(0,0,0,0.08);
+        }
+        .sug-head { padding:20px 22px 14px;border-bottom:1px solid #f5f5f5; }
+        .sug-head h3 { font-size:16px;font-weight:800;color:#1a1a1a;margin:0 0 14px; }
+        .scope-tabs { display:flex;gap:0;background:#f5f5f5;border-radius:10px;padding:3px; }
+        .scope-tab {
+            flex:1;text-align:center;padding:8px 4px;border-radius:8px;
+            font-size:13px;font-weight:600;cursor:pointer;border:none;
+            background:transparent;font-family:Inter,sans-serif;color:#888;transition:all .2s;
+        }
+        .scope-tab.active { background:#fff;color:#1a1a1a;box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+        .scope-tab:disabled { opacity:.4;cursor:default; }
+
+        .sug-list { padding:14px;max-height:600px;overflow-y:auto; }
+        .sug-item {
+            display:flex;gap:12px;padding:10px;border-radius:12px;
+            text-decoration:none;color:inherit;transition:background .2s;
+            align-items:flex-start;margin-bottom:6px;
+        }
+        .sug-item:last-child { margin-bottom:0; }
+        .sug-item:hover { background:#f9f9f9; }
+        .sug-thumb {
+            width:70px;height:56px;border-radius:10px;object-fit:cover;
+            flex-shrink:0;background:#f0f0f0;
+            display:flex;align-items:center;justify-content:center;
+        }
+        .sug-info { flex:1;min-width:0; }
+        .sug-name  { font-size:13px;font-weight:700;color:#1a1a1a;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+        .sug-where { font-size:11px;color:#aaa;margin:0 0 4px; }
+        .sug-price { font-size:15px;font-weight:800;color:var(--primary);margin:0; }
+        .sug-price span { font-size:10px;font-weight:400;color:#aaa; }
+
+        .sug-empty { text-align:center;padding:40px 16px;color:#ccc; }
+        .sug-empty i { font-size:30px;display:block;margin-bottom:10px; }
+
+        /* loading shimmer */
+        .shimmer {
+            background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);
+            background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:16px;
+        }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+        @media(max-width:1024px){
+            .page-wrap { grid-template-columns:1fr; }
+            .sidebar { position:static; }
+        }
+        @media(max-width:600px){
+            .gal-main { height:250px; }
+            .ev-info { padding:20px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav id="navbar">
+    <div class="logo-area"><a href="/"><h1>AfriStay</h1></a></div>
+    <div class="nav-wrapper" id="navWrapper">
+        <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
+        <div class="nav-center">
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/Listings">Listings</a></li>
+                <li><a href="/Events" class="active">Events</a></li>
+                <li><a href="/About">About</a></li>
+                <li><a href="/Contact">Contact</a></li>
+            </ul>
+        </div>
+        <div class="nav-right">
+            <a href="/Favorites" class="icon-link"><i class="fa-regular fa-heart"></i></a>
+            <a href="/Auth" id="auth-btn" class="signin-btn">Sign In</a>
+        </div>
+    </div>
+    <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
+</nav>
+
+<div class="page-wrap">
+    <!-- LEFT: skeleton while loading -->
+    <div id="evLeft">
+        <div class="shimmer" style="height:400px;margin-bottom:24px;"></div>
+        <div class="shimmer" style="height:260px;"></div>
+    </div>
+    <!-- RIGHT: skeleton -->
+    <div class="sidebar" id="evRight">
+        <div class="shimmer" style="height:420px;"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/config.js"></script>
+<script>
+const _sb  = window.supabaseClient;
+let EV     = null;   // loaded event object
+let SCOPE  = 'district'; // 'district' | 'sector'
+
+function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function getParam(k){ return new URLSearchParams(location.search).get(k); }
+
+/* ══════════════════════ LOAD EVENT ══════════════════════ */
+async function init() {
+    const id = getParam('id');
+    if (!id || !_sb) { showErr('Event not found.'); return; }
+
+    const { data: ev, error } = await _sb
+        .from('events')
+        .select('id,title,description,images,province_id,district_id,sector_id,location_label,landmark,start_date,end_date')
+        .eq('id', id).single();
+
+    if (error || !ev) { showErr('Event not found.'); return; }
+    EV = ev;
+    document.title = ev.title + ' — AfriStay Events';
+    renderLeft(ev);
+    renderRight();   // first load with SCOPE = 'district'
+}
+
+/* ══════════════════════ LEFT PANEL ══════════════════════ */
+function renderLeft(ev) {
+    const images = ev.images || [];
+    const fmtD   = d => new Date(d+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    const sDate  = ev.start_date, eDate = ev.end_date;
+    const dateStr = sDate
+        ? (eDate && eDate !== sDate
+            ? fmtD(sDate) + ' – ' + new Date(eDate+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})
+            : fmtD(sDate))
+        : '—';
+    const locStr  = [ev.location_label, ev.landmark].filter(Boolean).join(' · ');
+
+    // Gallery
+    let galHTML = '';
+    if (images.length) {
+        galHTML =
+            '<div class="gallery">' +
+            '<div class="gal-main"><img id="mainImg" src="'+esc(images[0])+'" alt="'+esc(ev.title)+'"></div>' +
+            (images.length > 1
+                ? '<div class="gal-thumbs">' +
+                  images.map((img,i) =>
+                    '<div class="gal-thumb'+(i===0?' active':'')+'" onclick="switchImg('+i+',this)">' +
+                    '<img src="'+esc(img)+'" loading="lazy"></div>'
+                  ).join('') +
+                  '</div>'
+                : '') +
+            '</div>';
+    } else {
+        galHTML = '<div style="height:280px;border-radius:20px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;margin-bottom:24px;box-shadow:0 4px 20px rgba(0,0,0,0.08);"><i class="fa-regular fa-calendar" style="font-size:56px;color:#ddd;"></i></div>';
+    }
+
+    // Info card
+    const infoHTML =
+        '<div class="ev-info">' +
+        '<h1 class="ev-title">'+esc(ev.title)+'</h1>' +
+        '<div class="chips">' +
+        '<div class="chip"><i class="fa-regular fa-calendar"></i>'+esc(dateStr)+'</div>' +
+        (locStr ? '<div class="chip"><i class="fa-solid fa-location-dot"></i>'+esc(locStr)+'</div>' : '') +
+        '</div>' +
+        (ev.description
+            ? '<p class="ev-desc-text">'+esc(ev.description)+'</p>'
+            : '<p style="color:#ccc;font-style:italic;">No description provided.</p>') +
+        '</div>';
+
+    document.getElementById('evLeft').innerHTML = galHTML + infoHTML;
+}
+
+window.switchImg = function(i, el) {
+    const imgs = EV?.images || [];
+    const main = document.getElementById('mainImg');
+    if (main && imgs[i]) main.src = imgs[i];
+    document.querySelectorAll('.gal-thumb').forEach(t => t.classList.remove('active'));
+    if (el) el.classList.add('active');
+};
+
+/* ══════════════════════ RIGHT — SUGGESTIONS ══════════════════════ */
+function renderRight() {
+    const hasSector   = !!EV?.sector_id;
+    const sidebarEl   = document.getElementById('evRight');
+    sidebarEl.innerHTML =
+        '<div class="sug-box">' +
+        '<div class="sug-head">' +
+        '<h3><i class="fa-solid fa-house" style="color:var(--primary);margin-right:6px;"></i>Nearby Stays</h3>' +
+        '<div class="scope-tabs">' +
+        '<button class="scope-tab'+(SCOPE==='district'?' active':'')+'" onclick="setScope(\'district\')" id="tabDistrict">Same District</button>' +
+        '<button class="scope-tab'+(SCOPE==='sector'?' active':'')+'" onclick="setScope(\'sector\')" id="tabSector"'+(hasSector?'':' disabled')+'>Same Sector</button>' +
+        '</div></div>' +
+        '<div class="sug-list" id="sugList"><div class="sug-empty"><i class="fa-solid fa-spinner fa-spin"></i><p>Finding stays...</p></div></div>' +
+        '</div>';
+    fetchSuggestions();
+}
+
+window.setScope = function(scope) {
+    if (!EV) return;
+    if (scope === 'sector' && !EV.sector_id) return;
+    SCOPE = scope;
+    // Update tab styles
+    document.getElementById('tabDistrict')?.classList.toggle('active', scope==='district');
+    document.getElementById('tabSector')?.classList.toggle('active', scope==='sector');
+    fetchSuggestions();
+};
+
+async function fetchSuggestions() {
+    const list = document.getElementById('sugList');
+    if (!list || !EV || !_sb) return;
+    list.innerHTML = '<div class="sug-empty"><i class="fa-solid fa-spinner fa-spin"></i><p>Loading...</p></div>';
+
+    try {
+        let q = _sb.from('listings')
+            .select('id,title,price,currency,category_slug,district_id,province_id,listing_images(image_url)')
+            .eq('status','approved')
+            .eq('availability_status','available');
+
+        if (SCOPE === 'sector' && EV.sector_id) {
+            q = q.eq('sector_id', EV.sector_id);
+        } else if (EV.district_id) {
+            q = q.eq('district_id', EV.district_id);
+        } else if (EV.province_id) {
+            q = q.eq('province_id', EV.province_id);
+        }
+
+        const { data, error } = await q.limit(10);
+        if (error) throw error;
+
+        if (!data?.length) {
+            const scopeLabel = SCOPE === 'sector' ? 'sector' : 'district';
+            list.innerHTML = '<div class="sug-empty"><i class="fa-solid fa-house-circle-xmark"></i><p>No listings found in this ' + scopeLabel + ' yet.</p></div>';
+            return;
+        }
+
+        // Batch district names for labels
+        const dtIds = [...new Set(data.map(l=>l.district_id).filter(Boolean))];
+        const dtMap = {};
+        if (dtIds.length) {
+            const {data:ds} = await _sb.from('districts').select('id,name').in('id',dtIds);
+            (ds||[]).forEach(d=>dtMap[d.id]=d.name);
+        }
+
+        list.innerHTML = '';
+        data.forEach(l => {
+            const rawImg = l.listing_images?.[0]?.image_url || null;
+            let imgSrc = rawImg;
+            if (rawImg && !rawImg.startsWith('http')) {
+                const {data:pub} = _sb.storage.from('listing_images').getPublicUrl(rawImg);
+                imgSrc = pub.publicUrl;
+            }
+            const unit  = l.category_slug === 'vehicle' ? '/day' : '/night';
+            const price = Number(l.price).toLocaleString('en-RW');
+            const dist  = dtMap[l.district_id] || '';
+
+            const a = document.createElement('a');
+            a.className = 'sug-item';
+            a.href = '/Detail/?id=' + l.id;
+            a.innerHTML =
+                (imgSrc
+                    ? '<img class="sug-thumb" src="'+esc(imgSrc)+'" loading="lazy">'
+                    : '<div class="sug-thumb"><i class="fa-solid fa-image" style="color:#ddd;font-size:18px;"></i></div>') +
+                '<div class="sug-info">' +
+                '<p class="sug-name">'+esc(l.title)+'</p>' +
+                (dist ? '<p class="sug-where"><i class="fa-solid fa-location-dot" style="color:var(--primary);margin-right:3px;font-size:10px;"></i>'+esc(dist)+'</p>' : '') +
+                '<p class="sug-price">'+price+' <span>'+(l.currency||'RWF')+unit+'</span></p>' +
+                '</div>';
+            list.appendChild(a);
+        });
+    } catch(err) {
+        list.innerHTML = '<div class="sug-empty"><p style="color:#e74c3c;">'+esc(err.message)+'</p></div>';
+    }
+}
+
+function showErr(msg) {
+    document.getElementById('evLeft').innerHTML =
+        '<div style="text-align:center;padding:80px 20px;color:#ccc;">' +
+        '<i class="fa-regular fa-calendar-xmark" style="font-size:54px;display:block;margin-bottom:14px;"></i>' +
+        '<h3 style="color:#bbb;margin-bottom:10px;">'+esc(msg)+'</h3>' +
+        '<a href="/Events" style="color:var(--primary);font-weight:600;">← Back to Events</a></div>';
+    document.getElementById('evRight').innerHTML = '';
+}
+
+function toggleMenu() { document.getElementById('navWrapper')?.classList.toggle('active'); }
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

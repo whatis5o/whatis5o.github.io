@@ -1,4 +1,4 @@
-// auth.js
+// auth.js — AfriStay v2 (with ban check)
 (function () {
     const toggleSignin = document.getElementById('btn-signin');
     const toggleSignup = document.getElementById('btn-signup');
@@ -10,12 +10,12 @@
     let mode = 'signin';
 
     function showError(msg) {
-        if (authError)   { authError.style.display   = 'block'; authError.innerText   = msg; }
-        if (authSuccess) { authSuccess.style.display = 'none';  authSuccess.innerText = ''; }
+        if (authError)   { authError.style.display = 'block'; authError.innerText = msg; }
+        if (authSuccess) { authSuccess.style.display = 'none'; authSuccess.innerText = ''; }
     }
     function showSuccess(msg) {
         if (authSuccess) { authSuccess.style.display = 'block'; authSuccess.innerText = msg; }
-        if (authError)   { authError.style.display   = 'none';  authError.innerText   = ''; }
+        if (authError)   { authError.style.display = 'none'; authError.innerText = ''; }
     }
 
     window.toggleAuth = (m) => {
@@ -53,12 +53,11 @@
         try {
             if (mode === 'signup') {
                 const { data, error } = await client.auth.signUp({
-                    email,
-                    password,
+                    email, password,
                     options: { data: { full_name: fullName || null, phone: phone || null } }
                 });
                 if (error) { showError(error.message || 'Sign up failed'); return; }
-                showSuccess('Sign up successful! Check your email to confirm then sign in.');
+                showSuccess('Sign up successful. Check your email to confirm, then sign in.');
 
             } else {
                 // ── SIGN IN ──
@@ -67,34 +66,43 @@
 
                 const user = data.user;
 
-                // 1. Fetch profile for role + name
-                const { data: profile } = await client
-                    .from('profiles').select('full_name, role').eq('id', user.id).single();
+                // Fetch profile — including banned flag
+                const { data: profile, error: pErr } = await client
+                    .from('profiles')
+                    .select('full_name, role, banned, email')
+                    .eq('id', user.id)
+                    .single();
+
+                if (pErr) { showError('Could not load your profile.'); return; }
+
+                // ── BAN CHECK ──
+                if (profile?.banned === true) {
+                    // Sign them back out immediately
+                    await client.auth.signOut();
+                    // Get admin contact email (first admin in profiles)
+                    const { data: admins } = await client
+                        .from('profiles')
+                        .select('email')
+                        .eq('role', 'admin')
+                        .limit(1);
+                    const adminEmail = admins?.[0]?.email || 'support@afristay.rw';
+                    showError(
+                        'Your account has been suspended. ' +
+                        'Contact ' + adminEmail + ' to appeal.'
+                    );
+                    return;
+                }
+
                 const role      = profile?.role || 'user';
                 const firstName = (profile?.full_name || 'User').split(' ')[0];
 
-                // 2. Cache role + name locally for instant nav
-                localStorage.setItem('afriStay_role',      role);
+                localStorage.setItem('afriStay_role', role);
                 localStorage.setItem('afriStay_firstName', firstName);
 
-                // 3. Sync any favorites the user saved while logged out
-                if (window.syncPendingFavorites) {
-                    await window.syncPendingFavorites(user.id);
-                }
-
-                showSuccess(`Welcome back, ${firstName}! Redirecting...`);
-
-                // 4. Redirect — honour ?next= so user lands where they were
+                showSuccess('Welcome back, ' + firstName + '! Redirecting...');
                 setTimeout(() => {
-                    const next = new URLSearchParams(window.location.search).get('next');
-                    if (next && next.startsWith('/')) {
-                        window.location.href = next;
-                    } else if (role === 'admin' || role === 'owner') {
-                        window.location.href = '/Dashboard';
-                    } else {
-                        window.location.href = '/';
-                    }
-                }, 900);
+                    window.location.href = (role === 'admin' || role === 'owner') ? '/Dashboard' : '/';
+                }, 1000);
             }
         } catch (err) {
             console.error('Auth error', err);

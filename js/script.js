@@ -13,7 +13,7 @@ async function initGlobalNav() {
     if (cachedRole) {
         const profileLink = (cachedRole === 'admin' || cachedRole === 'owner') ? '/Dashboard' : '/Profile';
         navRight.innerHTML = `
-            <a href="/Favorites" class="icon-link" title="Favorites"><i class="fa-solid fa-heart"></i></a>
+            <a href="/Favorites" class="icon-link" title="Favorites"><i class="fa-regular fa-heart"></i></a>
             <a href="${profileLink}" class="icon-link" title="${cachedRole === 'user' ? 'Profile' : 'Dashboard'}">
                 <i class="fa-solid fa-circle-user" style="font-size:24px;margin-left:10px;"></i>
             </a>
@@ -65,8 +65,8 @@ function generateListingCard(listing, locationName) {
                 }
                 <div class="cat-label">${catLbl}</div>
                 <div class="card-heart" data-lid="${listing.id}"
-                     onclick="event.preventDefault();event.stopPropagation();window.toggleFavorite(event,'${listing.id}')">
-                    <i class="fa-solid fa-heart"></i>
+                     onclick="event.preventDefault();event.stopPropagation();window.toggleFavorite(event,this,'${listing.id}')">
+                    <i class="fa-regular fa-heart"></i>
                 </div>
                 <div class="avail-strip ${avail}">${avail === 'available' ? '&#9679; Available' : '&#9679; ' + avail}</div>
             </div>
@@ -78,7 +78,14 @@ function generateListingCard(listing, locationName) {
                     <div class="feature"><i class="fa-solid fa-circle-check" style="color:#2ecc71"></i><span>${avail}</span></div>
                 </div>
                 <div class="card-footer">
-                    <div class="card-price">${currency === 'RWF' ? '' : currency + ' '}${price} <span>${currency === 'RWF' ? 'RWF' : ''}${unit}</span></div>
+                    ${listing.promo_discount
+                        ? '<div class="card-price">' +
+                          '<span class="promo-original">' + (currency === 'RWF' ? '' : currency + ' ') + price + ' <span style="font-size:11px;">' + (currency === 'RWF' ? 'RWF' : '') + unit + '</span></span>' +
+                          '<span class="promo-badge">' + listing.promo_discount + '% OFF</span><br>' +
+                          (currency === 'RWF' ? '' : currency + ' ') + Number(listing.promo_price).toLocaleString() + ' <span>' + (currency === 'RWF' ? 'RWF' : '') + unit + '</span>' +
+                          '</div>'
+                        : '<div class="card-price">' + (currency === 'RWF' ? '' : currency + ' ') + price + ' <span>' + (currency === 'RWF' ? 'RWF' : '') + unit + '</span></div>'
+                    }
                     <button class="details-btn" onclick="event.preventDefault();window.location.href='/Detail/?id=${listing.id}'">View Details</button>
                 </div>
             </div>
@@ -93,6 +100,8 @@ window.fetchAndRenderSharedListings = async function(options) {
     const sb        = window.supabaseClient;
     const container = document.getElementById(options.containerId);
     if (!container) return;
+
+    const today = new Date().toISOString().split('T')[0];
 
     let q = sb.from('listings')
         .select(`id, title, price, currency, availability_status, status,
@@ -126,6 +135,19 @@ window.fetchAndRenderSharedListings = async function(options) {
     if (pvIds.length) { const { data: ps } = await sb.from('provinces').select('id,name').in('id', pvIds); (ps||[]).forEach(p => pvMap[p.id] = p.name); }
     if (dtIds.length) { const { data: ds } = await sb.from('districts').select('id,name').in('id', dtIds); (ds||[]).forEach(d => dtMap[d.id] = d.name); }
 
+    // Fetch active promotions for these listings
+    const listingIds = listings.map(l => l.id);
+    const promoMap = {};
+    if (listingIds.length) {
+        const { data: promos } = await sb
+            .from('promotions')
+            .select('listing_id, discount')
+            .in('listing_id', listingIds)
+            .lte('start_date', today)
+            .gte('end_date', today);
+        (promos || []).forEach(p => { promoMap[p.listing_id] = p.discount; });
+    }
+
     container.innerHTML = '';
     listings.forEach(l => {
         const rawUrl = l.listing_images?.[0]?.image_url;
@@ -135,180 +157,253 @@ window.fetchAndRenderSharedListings = async function(options) {
             finalImageUrl = pub.publicUrl;
         }
         l.final_thumb_url = finalImageUrl;
+        // Attach promo data if active
+        if (promoMap[l.id]) {
+            l.promo_discount = promoMap[l.id];
+            l.promo_price = Math.round(l.price * (1 - promoMap[l.id] / 100));
+        } else {
+            l.promo_discount = null;
+            l.promo_price = null;
+        }
         const locName = [dtMap[l.district_id], pvMap[l.province_id]].filter(Boolean).join(', ') || 'Rwanda';
         container.innerHTML += generateListingCard(l, locName);
     });
 
     if (options.onComplete) options.onComplete(listings.length);
     // Refresh hearts after cards are in the DOM
-    setTimeout(() => FAV.refreshHearts(), 100);
+    // Re-tag hearts and refresh state after cards render
+    setTimeout(function() {
+        console.log('🔄 [FAV] Re-tagging hearts after render...');
+        document.querySelectorAll('.card-heart').forEach(function(btn) {
+            var m = (btn.getAttribute('onclick') || '').match(/['"]([a-f0-9-]{36})['"]/i);
+            if (m && !btn.dataset.lid) btn.dataset.lid = m[1];
+        });
+        refreshAllHearts();
+        var found = document.querySelectorAll('.card-heart[data-lid]').length;
+        console.log('✅ [FAV] Hearts refreshed, found:', found);
+    }, 150);
 };
 
-/* ═══════════════════════════════════════════════════════════════
-   FAVORITES ENGINE
-   ─────────────────────────────────────────────────────────────
-   LOGGED IN  → writes directly to Supabase `favorites` table
-   LOGGED OUT → saves to localStorage, nudges user to sign in
-   ON LOGIN   → auth.js calls window.syncPendingFavorites(userId)
-               which upserts localStorage items into Supabase
-   ═══════════════════════════════════════════════════════════════ */
-const FAV = (() => {
+/* ─────────────────────────────────────────
+   FAVORITES
+   ─────────────────────────────────────────
+   Logged in  → reads/writes Supabase favorites table
+   Logged out → saves to localStorage, shows sign-in toast
+   On login   → auth.js calls syncPendingFavorites(userId)
+                which flushes localStorage into Supabase
+   ───────────────────────────────────────── */
 
-    const LS_KEY = 'afriStay_pendingFavs';
+// In-memory cache so we don't re-query Supabase on every click
+var _favCache    = null;   // Set of listing IDs the user has saved
+var _favRowIds   = {};     // { listingId: favoriteRowId } needed for DELETE
+var _favUserId   = null;
 
-    /* ─── in-memory cache (avoids re-fetching on every click) ─── */
-    let _cache     = null;   // Set<listingId>  — null means "not loaded"
-    let _rowIds    = {};     // { listingId: favRowId }  — needed for DELETE
-    let _cachedUid = null;
+// ── toast helper (works on every page, creates its own container) ──
+function showFavToast(html, type) {
+    var colors = { success: '#2ecc71', error: '#e74c3c', info: '#3b82f6', warning: '#f59e0b' };
+    var box = document.getElementById('_favToastBox');
+    if (!box) {
+        box = document.createElement('div');
+        box.id = '_favToastBox';
+        box.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999999;display:flex;flex-direction:column;gap:10px;pointer-events:none;';
+        document.body.appendChild(box);
+        var sty = document.createElement('style');
+        sty.textContent = '@keyframes favPop{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}';
+        document.head.appendChild(sty);
+    }
+    var el = document.createElement('div');
+    el.style.cssText = 'background:' + (colors[type] || colors.info) + ';color:#fff;padding:13px 18px;border-radius:12px;'
+        + 'font-family:Inter,sans-serif;font-size:14px;font-weight:500;'
+        + 'box-shadow:0 4px 24px rgba(0,0,0,0.22);display:flex;align-items:center;gap:9px;'
+        + 'pointer-events:auto;max-width:320px;line-height:1.5;animation:favPop 0.25s ease;';
+    el.innerHTML = html;
+    box.appendChild(el);
+    setTimeout(function() {
+        el.style.transition = 'opacity 0.3s';
+        el.style.opacity = '0';
+        setTimeout(function() { el.remove(); }, 320);
+    }, 3800);
+}
 
-    /* ─── localStorage helpers ─── */
-    const getP  = ()        => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; } };
-    const setP  = arr       => localStorage.setItem(LS_KEY, JSON.stringify([...new Set(arr)]));
-    const addP  = id        => setP([...getP(), id]);
-    const delP  = id        => setP(getP().filter(x => x !== id));
-    const hasP  = id        => getP().includes(id);
+// ── pending favorites in localStorage (for logged-out users) ──
+function getPendingFavs()     { try { return JSON.parse(localStorage.getItem('afriStay_pendingFavs') || '[]'); } catch(e) { return []; } }
+function setPendingFavs(arr)  { localStorage.setItem('afriStay_pendingFavs', JSON.stringify([...new Set(arr)])); }
+function addPendingFav(id)    { setPendingFavs([...getPendingFavs(), id]); }
+function removePendingFav(id) { setPendingFavs(getPendingFavs().filter(function(x){ return x !== id; })); }
+function hasPendingFav(id)    { return getPendingFavs().includes(id); }
 
-    /* ─── toast ─── */
-    function toast(html, type) {
-        const BG = { success:'#2ecc71', error:'#e74c3c', info:'#3b82f6', warning:'#f59e0b' };
-        let box = document.getElementById('_favBox');
-        if (!box) {
-            box = document.createElement('div');
-            box.id = '_favBox';
-            box.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999999;display:flex;flex-direction:column;gap:10px;pointer-events:none;';
-            document.body.appendChild(box);
-            const sty = document.createElement('style');
-            sty.textContent = '@keyframes _fvIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}';
-            document.head.appendChild(sty);
+// ── load saved listing IDs from Supabase once per session ──
+async function loadFavCache(sb, userId) {
+    if (_favUserId === userId && _favCache !== null) return; // already loaded, skip
+    _favCache  = new Set();
+    _favRowIds = {};
+    _favUserId = userId;
+    var result = await sb.from('favorites').select('id, listing_id').eq('user_id', userId);
+    var rows = result.data || [];
+    rows.forEach(function(r) {
+        _favCache.add(r.listing_id);
+        _favRowIds[r.listing_id] = r.id;
+    });
+    console.log('❤️ [FAV] Loaded', _favCache.size, 'saved listings');
+}
+
+// ── set a heart button to filled or outline ──
+function setHeartState(btn, saved) {
+    if (!btn) return;
+    if (saved) {
+        btn.classList.add('faved');
+    } else {
+        btn.classList.remove('faved');
+    }
+}
+
+// ── after cards render, mark hearts that are already saved ──
+function refreshAllHearts() {
+    document.querySelectorAll('.card-heart[data-lid]').forEach(function(btn) {
+        var id    = btn.dataset.lid;
+        var saved = (_favCache && _favCache.has(id)) || hasPendingFav(id);
+        setHeartState(btn, saved);
+    });
+}
+
+// ── on page load, load cache and mark hearts ──
+async function initFavoriteHearts() {
+    console.log('🚀 [FAV] initFavoriteHearts() called');
+    var sb = window.supabaseClient;
+    if (!sb) {
+        console.error('❌ [FAV] initFavoriteHearts: no Supabase client');
+        return;
+    }
+    var authResult = await sb.auth.getUser().catch(function() { return { data: {} }; });
+    var user = authResult.data && authResult.data.user;
+    console.log('👤 [FAV] init: user is', user ? user.email : 'NOT LOGGED IN');
+    if (user) {
+        await loadFavCache(sb, user.id);
+        console.log('📦 [FAV] init: cache has', _favCache.size, 'saved listings');
+    } else {
+        console.log('💾 [FAV] init: checking localStorage pending:', getPendingFavs());
+    }
+    refreshAllHearts();
+    var hearts = document.querySelectorAll('.card-heart');
+    console.log('❤️ [FAV] init: found', hearts.length, 'heart buttons on page');
+    var tagged = document.querySelectorAll('.card-heart[data-lid]');
+    console.log('🏷️ [FAV] init:', tagged.length, 'hearts have data-lid tag');
+}
+
+// expose so home.js and other pages can trigger a refresh after their own renders
+window.refreshFavHearts = function() {
+    console.log('🔄 [FAV] Manual refreshFavHearts() called');
+    document.querySelectorAll('.card-heart').forEach(function(btn) {
+        var m = (btn.getAttribute('onclick') || '').match(/['"]([a-f0-9-]{36})['"]/i);
+        if (m && !btn.dataset.lid) btn.dataset.lid = m[1];
+    });
+    refreshAllHearts();
+};
+
+// run on page load
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(initFavoriteHearts, 300);
+});
+
+// ── THE MAIN TOGGLE — called by onclick on every card heart ──
+window.toggleFavorite = async function(event, btnEl, listingId) {
+    console.log('🖱️ [FAV] Heart clicked! listingId:', listingId);
+    event.preventDefault();
+    event.stopPropagation();
+
+    // btnEl is passed explicitly via `this` in onclick — currentTarget is null in inline handlers
+    var btn = btnEl || event.currentTarget;
+    btn.dataset.lid = listingId;
+    console.log('🔘 [FAV] Button found:', btn);
+
+    var sb = window.supabaseClient;
+    if (!sb) {
+        console.error('❌ [FAV] No Supabase client! Is config.js loaded before script.js?');
+        return;
+    }
+    console.log('✅ [FAV] Supabase client OK');
+
+    var authResult = await sb.auth.getUser().catch(function(e) {
+        console.error('❌ [FAV] getUser() threw:', e);
+        return { data: {} };
+    });
+    var user = authResult.data && authResult.data.user;
+    console.log('👤 [FAV] Current user:', user ? user.email : 'NOT LOGGED IN');
+
+    // ══ NOT LOGGED IN ══
+    if (!user) {
+        console.log('💾 [FAV] Saving to localStorage (not logged in)');
+        if (hasPendingFav(listingId)) {
+            removePendingFav(listingId);
+            setHeartState(btn, false);
+            showFavToast('💔 Removed from saved.', 'info');
+            console.log('🗑️ [FAV] Removed from localStorage');
+        } else {
+            addPendingFav(listingId);
+            setHeartState(btn, true);
+            var count = getPendingFavs().length;
+            var label = count === 1 ? 'favorite' : count + ' favorites';
+            showFavToast(
+                '❤️ Saved! <a href="/Auth" style="color:#fff;font-weight:800;text-decoration:underline;margin-left:5px;">Sign in</a> to keep your ' + label + '.',
+                'warning'
+            );
+            console.log('✅ [FAV] Saved to localStorage. Pending:', getPendingFavs());
         }
-        const el = document.createElement('div');
-        el.style.cssText = `background:${BG[type]||BG.info};color:#fff;padding:13px 18px;border-radius:12px;`
-            + `font-family:'Inter',sans-serif;font-size:14px;font-weight:500;`
-            + `box-shadow:0 4px 24px rgba(0,0,0,0.22);display:flex;align-items:center;gap:9px;`
-            + `pointer-events:auto;max-width:320px;line-height:1.5;animation:_fvIn 0.25s ease;`;
-        el.innerHTML = html;
-        box.appendChild(el);
-        setTimeout(() => {
-            el.style.transition = 'opacity 0.3s';
-            el.style.opacity    = '0';
-            setTimeout(() => el.remove(), 320);
-        }, 3800);
+        return;
     }
 
-    /* ─── load user's saved listings from Supabase (once) ─── */
-    async function loadCache(sb, uid) {
-        if (_cachedUid === uid && _cache !== null) return;
-        _cache = new Set(); _rowIds = {}; _cachedUid = uid;
-        const { data } = await sb.from('favorites').select('id,listing_id').eq('user_id', uid);
-        (data || []).forEach(r => { _cache.add(r.listing_id); _rowIds[r.listing_id] = r.id; });
-    }
+    // ══ LOGGED IN ══
+    console.log('🔄 [FAV] Loading Supabase favorites cache...');
+    await loadFavCache(sb, user.id);
+    console.log('📦 [FAV] Cache loaded. Saved listings:', [..._favCache]);
 
-    /* ─── flip the heart icon filled ↔ outline ─── */
-    function setHeart(btn, saved) {
-        if (!btn) return;
-        btn.classList.toggle('faved', !!saved);
-    }
-
-    /* ─── call this after any batch card render ─── */
-    function refreshHearts() {
-        document.querySelectorAll('.card-heart[data-lid]').forEach(btn => {
-            const id    = btn.dataset.lid;
-            const saved = (_cache && _cache.has(id)) || hasP(id);
-            setHeart(btn, saved);
-        });
-    }
-
-    /* ─── THE MAIN TOGGLE ─── */
-    async function toggle(event, listingId) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        const btn = event.currentTarget;
-        btn.dataset.lid = listingId; // ensure data attr is set
-
-        const sb = window.supabaseClient;
-        if (!sb) return;
-
-        const { data: { user } } = await sb.auth.getUser().catch(() => ({ data: {} }));
-
-        /* ══ NOT LOGGED IN ══ */
-        if (!user) {
-            if (hasP(listingId)) {
-                delP(listingId);
-                setHeart(btn, false);
-                toast('💔 Removed from saved.', 'info');
-            } else {
-                addP(listingId);
-                setHeart(btn, true);
-                const n = getP().length;
-                toast(
-                    `❤️ Saved! <a href="/Auth" style="color:#fff;font-weight:800;text-decoration:underline;margin-left:5px;">Sign in</a> to keep your ${n === 1 ? 'favorite' : n + ' favorites'}.`,
-                    'warning'
-                );
-            }
+    if (_favCache.has(listingId)) {
+        console.log('🗑️ [FAV] Already saved — deleting from Supabase. Row ID:', _favRowIds[listingId]);
+        var favId = _favRowIds[listingId];
+        var deleteResult = await sb.from('favorites').delete().eq('id', favId).eq('user_id', user.id);
+        console.log('🔁 [FAV] Delete result:', deleteResult);
+        if (deleteResult.error) {
+            console.error('❌ [FAV] Delete failed:', deleteResult.error);
+            showFavToast('❌ Could not remove: ' + deleteResult.error.message, 'error');
             return;
         }
+        _favCache.delete(listingId);
+        delete _favRowIds[listingId];
+        setHeartState(btn, false);
+        showFavToast('💔 Removed from favorites.', 'info');
+        console.log('✅ [FAV] Removed from favorites');
 
-        /* ══ LOGGED IN ══ */
-        await loadCache(sb, user.id);
-
-        if (_cache.has(listingId)) {
-            // ── REMOVE ──
-            const { error } = await sb.from('favorites')
-                .delete()
-                .eq('id', _rowIds[listingId])
-                .eq('user_id', user.id);
-            if (error) { toast('❌ Could not remove.', 'error'); return; }
-            _cache.delete(listingId);
-            delete _rowIds[listingId];
-            setHeart(btn, false);
-            toast('💔 Removed from favorites.', 'info');
-        } else {
-            // ── SAVE ──
-            const { data, error } = await sb.from('favorites')
-                .insert({ listing_id: listingId, user_id: user.id })
-                .select('id').single();
-            if (error) { toast('❌ Could not save.', 'error'); return; }
-            _cache.add(listingId);
-            _rowIds[listingId] = data.id;
-            setHeart(btn, true);
-            toast('❤️ Added to favorites!', 'success');
+    } else {
+        console.log('➕ [FAV] Not saved yet — inserting into Supabase...');
+        var insertResult = await sb.from('favorites').insert({ listing_id: listingId, user_id: user.id }).select('id').single();
+        console.log('🔁 [FAV] Insert result:', insertResult);
+        if (insertResult.error) {
+            console.error('❌ [FAV] Insert failed:', insertResult.error);
+            showFavToast('❌ Could not save: ' + insertResult.error.message, 'error');
+            return;
         }
+        _favCache.add(listingId);
+        _favRowIds[listingId] = insertResult.data.id;
+        setHeartState(btn, true);
+        showFavToast('❤️ Added to favorites!', 'success');
+        console.log('✅ [FAV] Saved to Supabase! Row ID:', insertResult.data.id);
     }
+};
 
-    /* ─── page init: mark hearts for already-saved listings ─── */
-    async function init() {
-        const sb = window.supabaseClient;
-        if (!sb) return;
-        const { data: { user } } = await sb.auth.getUser().catch(() => ({ data: {} }));
-        if (user) await loadCache(sb, user.id);
-        refreshHearts();
+// ── called by auth.js right after login to flush localStorage → Supabase ──
+window.syncPendingFavorites = async function(userId) {
+    var pending = getPendingFavs();
+    if (!pending.length) return;
+    var sb = window.supabaseClient;
+    if (!sb || !userId) return;
+    console.log('🔄 [FAV] Syncing', pending.length, 'pending favorites...');
+    var rows = pending.map(function(listing_id) { return { listing_id: listing_id, user_id: userId }; });
+    var result = await sb.from('favorites').upsert(rows, { onConflict: 'user_id,listing_id', ignoreDuplicates: true });
+    if (!result.error) {
+        setPendingFavs([]);
+        _favCache = null; // force reload next time
+        console.log('✅ [FAV] Sync done');
+    } else {
+        console.error('❌ [FAV] Sync failed:', result.error.message);
     }
-
-    /* ─── sync localStorage → Supabase right after login ─── */
-    async function syncPending(userId) {
-        const pending = getP();
-        if (!pending.length) return;
-        const sb = window.supabaseClient;
-        if (!sb || !userId) return;
-        const rows = pending.map(listing_id => ({ listing_id, user_id: userId }));
-        const { error } = await sb.from('favorites')
-            .upsert(rows, { onConflict: 'user_id,listing_id', ignoreDuplicates: true });
-        if (!error) {
-            setP([]);
-            _cache = null; // force reload on next toggle
-            console.log('✅ [FAV] Synced', pending.length, 'pending favorites to Supabase');
-        } else {
-            console.error('❌ [FAV] Sync failed:', error.message);
-        }
-    }
-
-    return { toggle, init, refreshHearts, syncPending };
-})();
-
-/* expose to global scope */
-window.toggleFavorite       = FAV.toggle;
-window.syncPendingFavorites  = FAV.syncPending;
-
-/* init hearts once DOM + Supabase are ready */
-document.addEventListener('DOMContentLoaded', () => setTimeout(FAV.init, 300));
+};

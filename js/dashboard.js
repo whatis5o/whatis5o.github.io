@@ -13,6 +13,18 @@ console.log("🚀 [ADMIN] Loading dashboard.js...");
    CONFIG
    =========================== */
 const DEMO_MODE = true; // Set to false for production
+
+/* ═══════════════════════════════════════════════
+   EMAILJS CONFIG  — fill in after creating your account at emailjs.com
+   See EMAIL_SETUP.md for step-by-step instructions
+   ═══════════════════════════════════════════════ */
+const EMAILJS_CONFIG = {
+    SERVICE_ID:               'service_XXXXXXX',   // EmailJS Dashboard → Email Services → your service ID
+    TEMPLATE_BOOKING_REQUEST: 'template_XXXXXXX',  // Template that emails the OWNER on new booking
+    TEMPLATE_BOOKING_APPROVED:'template_XXXXXXX',  // Template that emails the BOOKER on approval
+    PUBLIC_KEY:               'XXXXXXXXXXXXXXXXXXXX' // EmailJS Dashboard → Account → Public Key
+};
+
 console.log("🎯 [ADMIN] Demo mode:", DEMO_MODE ? "ENABLED" : "DISABLED");
 
 // Get Supabase client from window (created by config.js)
@@ -30,7 +42,6 @@ let CURRENT_ROLE = null; // 'admin' | 'owner' | 'user'
 /* ===========================
    TOAST NOTIFICATIONS
    =========================== */
-
 function toast(message, type = 'success', duration = 3500) {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -65,8 +76,7 @@ window.toast = toast;
    =========================== */
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("📱 [ADMIN] DOM loaded, initializing...");
-    const cachedRole = localStorage.getItem('afriStay_role');
-    if (cachedRole) applyRoleToUI(cachedRole);
+    
     // Step 0: Get Supabase client
     if (window.supabaseClient) {
         _supabase = window.supabaseClient;
@@ -105,8 +115,47 @@ document.addEventListener('DOMContentLoaded', async () => {
 /* ===========================
    DOM REPARENTING
    =========================== */
+function injectDashboardStyles() {
+    if (document.getElementById('_dashV2Styles')) return;
+    const s = document.createElement('style');
+    s.id = '_dashV2Styles';
+    s.textContent = `
+        /* Settings panel centered */
+        #settingsPanel .settings-inner,
+        #settingsPanel > div:not(.panel-header) {
+            max-width: 560px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        /* Users table fixed columns */
+        #usersTable th, #usersTable td {
+            min-width: 140px;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        #usersTable th:first-child, #usersTable td:first-child { min-width:40px;max-width:50px; }
+        #usersTable { table-layout: fixed; width: 100%; }
+        #usersTable th:nth-child(2), #usersTable td:nth-child(2) { min-width:160px; } /* name */
+        #usersTable th:nth-child(3), #usersTable td:nth-child(3) { min-width:200px; } /* email */
+        #usersTable th:nth-child(4), #usersTable td:nth-child(4) { min-width:130px; } /* phone */
+        #usersTable th:nth-child(5), #usersTable td:nth-child(5) { min-width:100px; } /* role */
+        #usersTable th:nth-child(6), #usersTable td:nth-child(6) { min-width:130px; } /* status */
+        #usersTable th:nth-child(7), #usersTable td:nth-child(7) { min-width:160px; } /* actions */
+        /* Promo price strikethrough on cards */
+        .promo-original { text-decoration: line-through; color: #aaa !important; font-size: 14px !important; font-weight: 400 !important; }
+        .promo-badge { background:#EB6753;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;vertical-align:middle; }
+        /* New bookings container */
+        #newBookingsContainer { min-height: 100px; }
+    `;
+    document.head.appendChild(s);
+}
+
 function reparentModalsAndQuickActions() {
     console.log("🔄 [ADMIN] Reparenting modals and quick actions...");
+    injectDashboardStyles();
     
     const move = (selector) => {
         const elements = $$(selector);
@@ -157,10 +206,12 @@ function bindUIInteractions() {
             // Switch to the selected panel
             togglePanels(`${tabName}Panel`);
             // Auto-load data when switching tabs
-            if (tabName === 'listings')   { filterListings(); }
-            if (tabName === 'events')     { loadEventsTable(); }
-            if (tabName === 'promotions') { loadPromotionsTable(); }
-            if (tabName === 'messages')   { loadMessagesPreview(); }
+            if (tabName === 'listings')         { filterListings(); }
+            if (tabName === 'events')           { loadEventsCards(); }
+            if (tabName === 'promotions')       { loadPromotionsCards(); }
+            if (tabName === 'messages')         { loadMessagesPreview(); }
+            if (tabName === 'listing-requests') { loadListingRequests(); }
+            if (tabName === 'bookings')         { loadBookingsTable(); }
             
             // Update active states
             navButtons.forEach(b => b.classList.remove('active'));
@@ -232,40 +283,6 @@ function bindUIInteractions() {
         openCreateListingBtn.addEventListener('click', () => {
             console.log("➕ [LISTING] Opening create listing modal");
             openModal('listingModal');
-            // Inject featured checkbox if not already in the form
-            if (CURRENT_ROLE === 'admin' && !document.getElementById('listFeatured')) {
-                const videoInput = document.getElementById('listVideoFiles');
-                if (videoInput) {
-                    const wrap = document.createElement('div');
-                    wrap.style.cssText = 'margin-top:14px;padding:12px 14px;background:#fff8f0;border:1px solid #fde8d8;border-radius:10px;';
-                    wrap.innerHTML = `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;color:#333;font-weight:500;">
-                        <input type="checkbox" id="listFeatured" style="width:17px;height:17px;accent-color:#EB6753;cursor:pointer;flex-shrink:0;">
-                        <div>
-                            <span style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-star" style="color:#f1c40f;"></i> Mark as Featured Listing</span>
-                        </div></label>`;
-                    videoInput.parentElement?.after(wrap);
-                }
-            }
-            if (!document.getElementById('listFeatured')) {
-                const videoInput = document.getElementById('listVideoFiles');
-                if (videoInput) {
-                    const wrap = document.createElement('div');
-                    wrap.style.cssText = 'margin-top:14px;padding:12px 14px;background:#fff8f0;border:1px solid #fde8d8;border-radius:10px;';
-                    wrap.innerHTML =
-                        '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;color:#333;font-weight:500;">' +
-                        '<input type="checkbox" id="listFeatured" style="width:17px;height:17px;accent-color:#EB6753;cursor:pointer;flex-shrink:0;">' +
-                        '<div>' +
-                        '<span style="display:flex;align-items:center;gap:6px;">' +
-                        '<i class="fa-solid fa-star" style="color:#f1c40f;"></i> Mark as Featured Listing' +
-                        '</span>' +
-                        '<span style="font-size:12px;color:#999;font-weight:400;">Featured listings appear on the home page carousel</span>' +
-                        '</div></label>';
-                    videoInput.closest('div')?.after(wrap) || videoInput.parentElement?.after(wrap);
-                }
-            } else {
-                // Reset checkbox each time modal opens
-                document.getElementById('listFeatured').checked = false;
-            }
         });
     }
 
@@ -327,11 +344,8 @@ function bindUIInteractions() {
         await handleCreateEvent();
     });
 
-    // === Promo Form Submit ===
-    document.getElementById('promoForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await handleCreatePromo();
-    });
+    // Promo form submit — modal is now self-built, listener kept harmless
+    document.getElementById('promoForm')?.addEventListener('submit', async (e) => { e.preventDefault(); await handleCreatePromo(); });
 
     // === Settings Form Submit ===
     document.getElementById('settingsForm')?.addEventListener('submit', async (e) => {
@@ -742,9 +756,11 @@ function applyRoleToUI(role) {
     // ADMIN: sees everything
     if (role === 'admin') {
         console.log("  👑 ADMIN role - showing all features");
-        ['users', 'events', 'promotions', 'messages'].forEach(t => show(t));
+        ['users', 'events', 'promotions', 'messages', 'listing-requests'].forEach(t => show(t));
         if (createListingBtn) createListingBtn.style.display = '';
         if (quickMenu) quickMenu.querySelectorAll('button').forEach(b => b.style.display = '');
+        // Inject listing-requests nav button if not in HTML
+        injectListingRequestsTab();
     } 
     // OWNER: manages listings and bookings
     else if (role === 'owner') {
@@ -755,6 +771,11 @@ function applyRoleToUI(role) {
         hide('users');
         hide('promotions');
         hide('events');
+        // Relabel stat cards for owner
+        const userLbl = document.querySelector('#totalUsers')?.closest('.stat-card')?.querySelector('.stat-label, .stat-lbl, p, [class*=label]');
+        if (userLbl) userLbl.textContent = 'Total Clients';
+        const revLbl = document.querySelector('#totalRevenue')?.closest('.stat-card')?.querySelector('.stat-label, .stat-lbl, p, [class*=label]');
+        if (revLbl) revLbl.textContent = 'My Revenue';
         
         if (createListingBtn) createListingBtn.style.display = '';
         
@@ -820,7 +841,7 @@ async function loadListingsGrid(filters = {}) {
     // Build query — no thumbnail_url column
     let q = _supabase
         .from('listings')
-        .select('id,title,price,currency,availability_status,status,owner_id,province_id,district_id,sector_id,category_slug,created_at,featured')
+        .select('id,title,price,currency,availability_status,status,owner_id,province_id,district_id,sector_id,category_slug,created_at')
         .order('created_at', { ascending: false })
         .limit(200);
 
@@ -860,7 +881,7 @@ async function loadListingsGrid(filters = {}) {
         card.className = 'listing-card';
         card.style.cssText = 'background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;flex-direction:column;';
         card.innerHTML = `
-            <a href="/Detail?id=${l.id}" style="text-decoration:none;color:inherit;display:block;">
+            <a href="detail.html?id=${l.id}" style="text-decoration:none;color:inherit;display:block;">
                 <div style="height:180px;background:#f0f0f0;overflow:hidden;position:relative;">
                     ${thumb
                         ? `<img src="${thumb}" alt="${escapeHtml(l.title)}" style="width:100%;height:100%;object-fit:cover;">`
@@ -870,7 +891,7 @@ async function loadListingsGrid(filters = {}) {
                 </div>
             </a>
             <div style="padding:14px;flex:1;display:flex;flex-direction:column;gap:6px;">
-                <a href="/Detail?id=${l.id}" style="text-decoration:none;"><h4 style="margin:0;font-size:15px;font-weight:600;color:#222;">${escapeHtml(l.title)}</h4></a>
+                <a href="detail.html?id=${l.id}" style="text-decoration:none;"><h4 style="margin:0;font-size:15px;font-weight:600;color:#222;">${escapeHtml(l.title)}</h4></a>
                 <p style="margin:0;color:#888;font-size:13px;">${l.category_slug || ''} • ${ownerMap[l.owner_id] || 'Unknown'}</p>
                 <p style="margin:0;color:var(--primary,#EB6753);font-weight:700;font-size:14px;">${Number(l.price).toLocaleString()} ${l.currency || 'RWF'}</p>
                 <div style="display:flex;gap:8px;margin-top:auto;padding-top:10px;flex-wrap:wrap;">
@@ -878,13 +899,6 @@ async function loadListingsGrid(filters = {}) {
                         <button class="btn-small" onclick="approveListing('${l.id}')" style="flex:1"><i class="fa-solid fa-check"></i> Approve</button>
                         <button class="btn-small" onclick="toggleListingAvailability('${l.id}','${l.availability_status}')" style="flex:1">${l.availability_status === 'available' ? '<i class="fa-solid fa-eye-slash"></i> Disable' : '<i class="fa-solid fa-eye"></i> Enable'}</button>
                         <button class="btn-small btn-danger" onclick="deleteListing('${l.id}')" style="flex:1"><i class="fa-solid fa-trash"></i> Delete</button>
-                        <label style="width:100%;display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 0 2px;border-top:1px solid #f0f0f0;margin-top:2px;font-size:13px;color:#555;user-select:none;">
-                            <input type="checkbox" id="feat_${l.id}" ${l.featured ? 'checked' : ''}
-                                onchange="toggleFeatured('${l.id}', this.checked)"
-                                style="width:15px;height:15px;accent-color:#EB6753;cursor:pointer;flex-shrink:0;">
-                            <i class="fa-solid fa-star" style="color:#f1c40f;font-size:12px;"></i>
-                            Featured listing
-                        </label>
                     ` : ''}
                     ${CURRENT_ROLE === 'owner' && l.availability_status !== 'booked' ? `
                         <button class="btn-small" onclick="toggleListingAvailability('${l.id}','${l.availability_status}')" style="flex:1">${l.availability_status === 'available' ? 'Set Unavailable' : 'Set Available'}</button>
@@ -899,17 +913,23 @@ async function loadListingsGrid(filters = {}) {
 
 async function loadAllCountsAndTables() {
     console.log("📊 [DATA] Loading all data...");
-    
     await Promise.all([
         loadCounts(),
         loadListingsTable(),
         loadBookingsTable(),
         loadUsersTable(),
-        loadEventsTable(),
-        loadPromotionsTable(),
+        loadEventsCards(),
+        loadPromotionsCards(),
         loadMessagesPreview()
     ]);
-    
+    // Owner-specific: load new (pending) bookings panel
+    if (CURRENT_ROLE === 'owner') {
+        loadNewBookings();
+    }
+    // Admin: inject listing-requests tab
+    if (CURRENT_ROLE === 'admin') {
+        loadListingRequests();
+    }
     console.log("✅ [DATA] All data loaded");
 }
 
@@ -937,30 +957,54 @@ async function loadCounts() {
             const { count: bookingsCount, error: e3 } = await _supabase.from('bookings').select('id', { count: 'exact', head: true });
             if (e3) console.error("Error counting bookings:", e3);
             
+            // Admin total revenue = sum of all approved bookings
+            const { data: revRows } = await _supabase
+                .from('bookings')
+                .select('total_amount')
+                .in('status', ['approved', 'completed']);
+            const adminRevenue = (revRows || []).reduce((s, r) => s + Number(r.total_amount || 0), 0);
+
             setCount('#totalUsers', usersCount || 0);
             setCount('#totalListings', listingsCount || 0);
             setCount('#totalBookings', bookingsCount || 0);
-            setCount('#totalRevenue', '0 RWF');
+            setCount('#totalRevenue', Number(adminRevenue).toLocaleString('en-RW') + ' RWF');
         } 
         else if (CURRENT_ROLE === 'owner') {
             console.log("  Loading owner counts...");
-            const { count: listingsCount, error: e1 } = await _supabase
+            const { count: listingsCount } = await _supabase
                 .from('listings')
                 .select('id', { count: 'exact', head: true })
                 .eq('owner_id', CURRENT_PROFILE.id);
-            if (e1) console.error("Error counting owner listings:", e1);
-            
+
             const listingIds = await fetchOwnerListingIds();
-            const { count: bookingsCount, error: e2 } = await _supabase
+            const safeIds = listingIds.length ? listingIds : ['00000000-0000-0000-0000-000000000000'];
+
+            // Total unique clients (distinct user_ids who have ever booked)
+            const { data: clientRows } = await _supabase
+                .from('bookings')
+                .select('user_id')
+                .in('listing_id', safeIds);
+            const uniqueClients = new Set((clientRows || []).map(r => r.user_id)).size;
+
+            // Total bookings
+            const { count: bookingsCount } = await _supabase
                 .from('bookings')
                 .select('id', { count: 'exact', head: true })
-                .in('listing_id', listingIds.length ? listingIds : [-1]);
-            if (e2) console.error("Error counting owner bookings:", e2);
-            
-            setCount('#totalUsers', 0);
+                .in('listing_id', safeIds);
+
+            // Total revenue (sum of approved bookings)
+            const { data: revenueRows } = await _supabase
+                .from('bookings')
+                .select('total_amount')
+                .in('listing_id', safeIds)
+                .in('status', ['approved', 'completed']);
+            const totalRevenue = (revenueRows || []).reduce((s, r) => s + Number(r.total_amount || 0), 0);
+
+            setCount('#totalUsers', uniqueClients);
             setCount('#totalListings', listingsCount || 0);
             setCount('#totalBookings', bookingsCount || 0);
-            setCount('#totalRevenue', 'N/A');
+            setCount('#totalRevenue', Number(totalRevenue).toLocaleString('en-RW') + ' RWF');
+            console.log(`  Owner stats: ${uniqueClients} clients, ${listingsCount} listings, ${totalRevenue} RWF`);
         } 
         else {
             console.log("  Loading user counts...");
@@ -1191,19 +1235,20 @@ async function loadListingsTable() {
    =========================== */
 async function loadBookingsTable() {
     console.log("📅 [BOOKINGS] Loading bookings table...");
+    
     const tbody = $('#allBookingsBody');
-    if (!tbody) return;
+    if (!tbody) {
+        console.warn("⚠️ [BOOKINGS] Table body not found");
+        return;
+    }
     
     tbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
 
     try {
-        // WE ADDED "profiles!inner(full_name, email, phone)" TO GET THE GUEST INFO
-        let q = _supabase.from('bookings').select(`
-            id, listing_id, start_date, end_date, total_amount, status, user_id, created_at,
-            profiles (full_name, email, phone)
-        `);
+        let q = _supabase.from('bookings').select('id, listing_id, start_date, end_date, total_amount, status, user_id, created_at');
 
         if (CURRENT_ROLE === 'owner') {
+            console.log("  Filtering for owner's listing bookings");
             const listingIds = await fetchOwnerListingIds();
             if (!listingIds.length) {
                 tbody.innerHTML = '<tr><td colspan="7">No bookings for your listings.</td></tr>';
@@ -1211,54 +1256,67 @@ async function loadBookingsTable() {
             }
             q = q.in('listing_id', listingIds);
         } else if (CURRENT_ROLE === 'user') {
+            console.log("  Filtering for user's bookings");
             q = q.eq('user_id', CURRENT_PROFILE.id);
         }
 
         const { data, error } = await q.order('created_at', { ascending: false }).limit(200);
         
-        if (error) throw error;
+        if (error) {
+            console.error("❌ [BOOKINGS] Error loading bookings:", error);
+            tbody.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
+            return;
+        }
+
         if (!data || data.length === 0) {
+            console.log("  No bookings found");
             tbody.innerHTML = '<tr><td colspan="7">No bookings found.</td></tr>';
             return;
         }
+
+        console.log(`  Found ${data.length} bookings`);
 
         tbody.innerHTML = '';
         
         for (let i = 0; i < data.length; i++) {
             const r = data[i];
             
-            const { data: listing } = await _supabase.from('listings').select('title, owner_id').eq('id', r.listing_id).maybeSingle();
-            
-            // Format Guest Data
-            const guestName = r.profiles?.full_name || 'Unknown Guest';
-            const guestEmail = r.profiles?.email || 'No email';
-            const guestPhone = r.profiles?.phone || 'No phone';
+            const { data: listing } = await _supabase
+                .from('listings')
+                .select('title, owner_id')
+                .eq('id', r.listing_id)
+                .maybeSingle();
             
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${i + 1}.</td>
                 <td>${shortId(r.id)}</td>
-                <td><strong>${escapeHtml(listing?.title || '—')}</strong></td>
-                <td>
-                    <strong style="color: #333;">${escapeHtml(guestName)}</strong><br>
-                    <small style="color: #888;">${escapeHtml(guestPhone)}</small><br>
-                    <small style="color: #888;">${escapeHtml(guestEmail)}</small>
-                </td>
+                <td>${escapeHtml(listing?.title || '—')}</td>
+                <td>${shortId(r.user_id)}</td>
                 <td>${r.start_date} → ${r.end_date}</td>
-                <td style="font-weight: 600; color: #EB6753;">${r.total_amount} RWF</td>
+                <td>${r.total_amount}</td>
                 <td>
-                    <span class="status-badge status-${r.status}">${r.status}</span><br>
-                    ${(CURRENT_ROLE === 'owner' && listing?.owner_id === CURRENT_PROFILE.id && r.status === 'pending') ? 
-                        `<button class="btn-small" style="margin-top: 8px; background: #2ecc71; color: white;" onclick="approveBooking('${r.id}')"><i class="fa-solid fa-check"></i> Approve</button>` : ''}
+                    <span class="status-badge status-${r.status}">${r.status}</span>
+                    ${(CURRENT_ROLE === 'owner' && listing?.owner_id === CURRENT_PROFILE.id && r.status === 'pending') ? `
+                        <button class="btn-small" style="background:#e8f8f0;color:#27ae60;border:1px solid #b8e6ce;" onclick="approveBooking('${r.id}')"><i class="fa-solid fa-check"></i> Approve</button>
+                        <button class="btn-small" style="background:#fde8e8;color:#e74c3c;border:1px solid #f5c6c6;" onclick="rejectBooking('${r.id}')"><i class="fa-solid fa-xmark"></i> Reject</button>
+                    ` : ''}
+                    ${r.status === 'approved' ? 
+                        `<button class="btn-small" style="background:#f0f9ff;color:#3498db;border:1px solid #d0e8f8;" onclick="downloadReceipt('${r.id}')"><i class="fa-solid fa-download"></i> Receipt</button>` : ''}
+                    ${DEMO_MODE && (CURRENT_ROLE === 'admin' || (CURRENT_ROLE === 'owner' && listing?.owner_id === CURRENT_PROFILE.id)) ? 
+                        `<button class="btn-small" onclick="demoMarkPaid('${r.id}')">Mark Paid (demo)</button>` : ''}
                 </td>
             `;
             tbody.appendChild(row);
         }
+
+        console.log("✅ [BOOKINGS] Table populated");
+
     } catch (err) {
         console.error("❌ [BOOKINGS] Exception:", err);
-        tbody.innerHTML = `<tr><td colspan="7">Failed to load bookings: ${err.message}</td></tr>`;
+        tbody.innerHTML = '<tr><td colspan="7">Failed to load bookings</td></tr>';
     }
-} 
+}
 
 /* ===========================
    USERS TABLE
@@ -1476,19 +1534,132 @@ async function toggleListingAvailability(listingId, current) {
 
 async function approveBooking(bookingId) {
     console.log("✅ [ACTION] Approving booking:", bookingId);
-    if (!confirm('Approve booking? This will notify user and mark listing unavailable.')) return;
+    if (!confirm('Approve this booking? The guest will be notified by email with a receipt.')) return;
+
+    toast('Approving booking...', 'info');
+
     try {
+        // 1. Mark booking approved in DB
         const { error } = await _supabase
             .from('bookings')
             .update({ status: 'approved' })
             .eq('id', bookingId);
         if (error) throw error;
-        toast('Booking approved!', 'success');
+
+        // 2. Email booker via EmailJS
+        try {
+            // Fetch all details needed for the email
+            const { data: booking }  = await _supabase.from('bookings').select('*').eq('id', bookingId).single();
+            const { data: listing }  = await _supabase.from('listings').select('title,price,currency,address,province_id,district_id,owner_id').eq('id', booking.listing_id).single();
+            const { data: booker }   = await _supabase.from('profiles').select('full_name,email').eq('id', booking.user_id).single();
+            const { data: owner }    = await _supabase.from('profiles').select('full_name,email,phone').eq('id', listing?.owner_id).single();
+
+            // Resolve location
+            let location = listing?.address || 'Rwanda';
+            if (listing?.district_id || listing?.province_id) {
+                const [{ data: dist }, { data: prov }] = await Promise.all([
+                    listing?.district_id ? _supabase.from('districts').select('name').eq('id', listing.district_id).single() : { data: null },
+                    listing?.province_id ? _supabase.from('provinces').select('name').eq('id', listing.province_id).single() : { data: null },
+                ]);
+                location = [dist?.name, prov?.name].filter(Boolean).join(', ') || location;
+            }
+
+            const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+            const nights = Math.ceil((new Date(booking.end_date) - new Date(booking.start_date)) / 86400000);
+            const payLabel = (booking.payment_method || '').replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+            const currency = listing?.currency || 'RWF';
+            const receiptNo = 'RCP-' + booking.id.substring(0,8).toUpperCase();
+            const issuedDate = new Date().toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+
+            if (booker?.email && window.emailjs) {
+                await emailjs.send(
+                    EMAILJS_CONFIG.SERVICE_ID,
+                    EMAILJS_CONFIG.TEMPLATE_BOOKING_APPROVED,
+                    {
+                        to_email:        booker.email,
+                        booker_name:     booker.full_name || 'Guest',
+                        listing_title:   listing?.title || '—',
+                        location,
+                        check_in:        fmt(booking.start_date),
+                        check_out:       fmt(booking.end_date),
+                        nights:          nights + ' night' + (nights !== 1 ? 's' : ''),
+                        price_per_night: Number(listing?.price || 0).toLocaleString('en-RW') + ' ' + currency,
+                        payment_method:  payLabel,
+                        total:           Number(booking.total_amount).toLocaleString('en-RW') + ' ' + currency,
+                        receipt_no:      receiptNo,
+                        issued_date:     issuedDate,
+                        owner_name:      owner?.full_name || 'Host',
+                        owner_email:     owner?.email || '—',
+                        owner_phone:     owner?.phone || '—',
+                        dashboard_url:   window.location.origin + '/Dashboard/',
+                    },
+                    EMAILJS_CONFIG.PUBLIC_KEY
+                );
+                console.log('📧 [APPROVE] Booker email sent to:', booker.email);
+            } else {
+                console.warn('⚠️ [APPROVE] EmailJS not ready or booker email missing');
+            }
+        } catch (emailErr) {
+            console.warn('⚠️ [APPROVE] Email failed (non-blocking):', emailErr.message || emailErr);
+        }
+
+        toast('✅ Booking approved! Guest has been notified by email.', 'success');
         await loadBookingsTable();
         await filterListings();
+
     } catch (err) {
         console.error("❌ [ACTION] Error approving booking:", err);
         toast('Failed to approve booking: ' + err.message, 'error');
+    }
+}
+
+async function rejectBooking(bookingId) {
+    console.log("❌ [ACTION] Rejecting booking:", bookingId);
+    if (!confirm('Reject this booking? The listing will become available again.')) return;
+
+    toast('Rejecting booking...', 'info');
+    try {
+        // 1. Reject the booking (trigger will free the listing automatically)
+        const { error } = await _supabase
+            .from('bookings')
+            .update({ status: 'rejected' })
+            .eq('id', bookingId);
+        if (error) throw error;
+
+        // 2. Email the guest if EmailJS available
+        try {
+            const { data: booking }  = await _supabase.from('bookings').select('*').eq('id', bookingId).single();
+            const { data: listing }  = await _supabase.from('listings').select('title, owner_id').eq('id', booking.listing_id).single();
+            const { data: booker }   = await _supabase.from('profiles').select('full_name, email').eq('id', booking.user_id).single();
+
+            if (booker?.email && window.emailjs) {
+                const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+                await emailjs.send(
+                    EMAILJS_CONFIG.SERVICE_ID,
+                    EMAILJS_CONFIG.TEMPLATE_BOOKING_REJECTED || EMAILJS_CONFIG.TEMPLATE_BOOKING_APPROVED,
+                    {
+                        to_email:       booker.email,
+                        booker_name:    booker.full_name || 'Guest',
+                        listing_title:  listing?.title || '—',
+                        check_in:       fmt(booking.start_date),
+                        check_out:      fmt(booking.end_date),
+                        message:        'Unfortunately, the host was unable to accommodate your booking request. The listing is now available for new dates.',
+                    },
+                    EMAILJS_CONFIG.PUBLIC_KEY
+                );
+                console.log('📧 [REJECT] Guest notified:', booker.email);
+            }
+        } catch (emailErr) {
+            console.warn('⚠️ [REJECT] Email failed (non-blocking):', emailErr.message);
+        }
+
+        toast('Booking rejected. Listing is now available again.', 'success');
+        await loadBookingsTable();
+        await filterListings();
+
+    } catch (err) {
+        console.error("❌ [ACTION] Error rejecting booking:", err);
+        toast('Failed to reject booking: ' + err.message, 'error');
     }
 }
 
@@ -1557,12 +1728,11 @@ async function promoteToOwner(userId) {
 
 async function handleCreateListing() {
     console.log("➕ [LISTING] Creating new listing (with media)...");
-    const title = $('#listTitle')?.value?.trim();
+    const title = $('#listTitle')?.value;
     const price = Number($('#listPrice')?.value || 0);
-    const desc = $('#listDesc')?.value?.trim();
+    const desc = $('#listDesc')?.value;
     const category = $('#listCategory')?.value;
     const ownerId = $('#selectedOwnerId')?.value || (CURRENT_PROFILE && CURRENT_PROFILE.id);
-    const isFeatured = document.getElementById('listFeatured')?.checked || false;
 
     const provinceId = $('#selProvince')?.value || null;
     const districtId = $('#selDistrict')?.value || null;
@@ -1570,138 +1740,92 @@ async function handleCreateListing() {
     const address = $('#listAddress')?.value || '';
 
     if (!title || !price || !desc || !ownerId) {
-        toast('Please fill all required fields.', 'warning');
+        alert('Fill required fields');
         return;
     }
 
+    // validate files
     const imagesInput = document.getElementById('listImageFiles');
     const videosInput = document.getElementById('listVideoFiles');
     const images = imagesInput ? Array.from(imagesInput.files || []) : [];
     const videos = videosInput ? Array.from(videosInput.files || []) : [];
 
-    if (images.length > 10) { toast('Max 10 images allowed.', 'warning'); return; }
-    if (videos.length > 3)  { toast('Max 3 videos allowed.', 'warning'); return; }
-
-    const createBtn = document.getElementById('createBtn');
-    if (createBtn) { createBtn.disabled = true; createBtn.textContent = 'Uploading...'; }
+    if (images.length > 10) { alert('Max 10 images allowed'); return; }
+    if (videos.length > 3) { alert('Max 3 videos allowed'); return; }
 
     try {
-        // 1) Create listing row
-        toast('Creating listing...', 'info');
+        // 1) create listing row and get its id
         const { data: created, error: createErr } = await _supabase
-            .from('listings')
-            .insert([{
-                owner_id: ownerId,
-                title,
-                description: desc,
-                price,
-                currency: 'RWF',
-                province_id: provinceId,
-                district_id: districtId,
-                sector_id: sectorId,
-                address,
-                category_slug: category,
-                status: 'pending',
-                availability_status: 'available',
-                featured: isFeatured
-            }])
-            .select()
-            .single();
+        .from('listings')
+        .insert([{
+            owner_id: ownerId,
+            title,
+            description: desc,
+            price,
+            currency: 'RWF',
+            province_id: provinceId,
+            district_id: districtId,
+            sector_id: sectorId,
+            address,
+            category_slug: category,
+            status: 'pending',
+            availability_status: 'available'
+        }])
+        .select()
+        .single();
 
         if (createErr) throw createErr;
-        const listingId = created.id;
-        console.log('✅ Listing created, id:', listingId);
 
-        // Helper to clean filenames
-        const cleanName = (name) => name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+        const listingId = created.id;
+        console.log('Created listing id:', listingId);
 
         // 2) Upload images
+        const uploadedImageRows = [];
         if (images.length) {
-            toast(`Uploading ${images.length} image(s)...`, 'info');
-            const uploadedImageRows = [];
-            for (const file of images) {
-                // MUST start with ownerId to pass your RLS policy!
-                const path = `${ownerId}/${listingId}/${Date.now()}_${cleanName(file.name)}`;
-                
-                // Using hyphenated bucket name 'listing-images'
-                const { error: upErr } = await _supabase.storage.from('listing-images').upload(path, file, { upsert: false });
-                
-                if (upErr) {
-                    console.error('❌ Image upload failed:', file.name, upErr.message);
-                    toast(`Image failed: ${file.name}`, 'error');
-                    continue;
-                }
-                
-                const { data: urlData } = _supabase.storage.from('listing-images').getPublicUrl(path);
-                // Database table is STILL 'listing_images' (underscore)
-                uploadedImageRows.push({ listing_id: listingId, image_url: urlData?.publicUrl, filename: file.name, mime_type: file.type });
-                console.log('✅ Image uploaded:', file.name);
+        for (const file of images) {
+            const path = `${ownerId}/${listingId}/${Date.now()}-${file.name}`;
+            const { error: upErr } = await _supabase.storage.from('listing-images').upload(path, file, { upsert: false });
+            if (upErr) {
+            console.warn('Image upload failed for', file.name, upErr);
+            continue;
             }
-            if (uploadedImageRows.length) {
-                const { error: imgErr } = await _supabase.from('listing_images').insert(uploadedImageRows);
-                if (imgErr) toast('Failed to save image records: ' + imgErr.message, 'error');
-            }
-        // --- NETWORK CHECKS ---
-        if (!navigator.onLine) {
-            toast('No internet connection detected. Please check your Wi-Fi.', 'error');
-            if (createBtn) { createBtn.disabled = false; createBtn.textContent = 'Create Listing'; }
-            return;
+            const { data: urlData } = await _supabase.storage.from('listing-images').getPublicUrl(path);
+            const publicUrl = urlData?.publicUrl || null;
+            uploadedImageRows.push({ listing_id: listingId, image_url: publicUrl, filename: file.name, mime_type: file.type });
         }
 
-        const networkListener = () => toast('Connection lost! Upload might fail.', 'error');
-        window.addEventListener('offline', networkListener);
-
-        // Warn them if it takes longer than 8 seconds
-        const slowUploadWarning = setTimeout(() => {
-            toast('This is taking longer than usual. Please do not close the window...', 'info', 6000);
-        }, 8000);
-
-        // ... (Keep your existing Database & Image Upload Logic exactly as is) ...
-
-        clearTimeout(slowUploadWarning);
-        window.removeEventListener('offline', networkListener);
-        
-        toast('✅ Listing created successfully!', 'success');
+        if (uploadedImageRows.length) {
+            const { error: imgInsertErr } = await _supabase.from('listing_images').insert(uploadedImageRows);
+            if (imgInsertErr) console.warn('listing_images insert error', imgInsertErr);
+        }
         }
 
         // 3) Upload videos
+        const uploadedVideoRows = [];
         if (videos.length) {
-            toast(`Uploading ${videos.length} video(s)...`, 'info');
-            const uploadedVideoRows = [];
-            for (const file of videos) {
-                // MUST start with ownerId to pass your RLS policy!
-                const path = `${ownerId}/${listingId}/${Date.now()}_${cleanName(file.name)}`;
-                
-                // Using hyphenated bucket name 'listing-videos'
-                const { error: upErr } = await _supabase.storage.from('listing-videos').upload(path, file, { upsert: false });
-                
-                if (upErr) {
-                    console.error('❌ Video upload failed:', file.name, upErr.message);
-                    toast(`Video failed: ${file.name}`, 'error');
-                    continue;
-                }
-                
-                const { data: urlData } = _supabase.storage.from('listing-videos').getPublicUrl(path);
-                // Database table is STILL 'listing_videos' (underscore)
-                uploadedVideoRows.push({ listing_id: listingId, video_url: urlData?.publicUrl, filename: file.name, mime_type: file.type });
-                console.log('✅ Video uploaded:', file.name);
+        for (const file of videos) {
+            const path = `${ownerId}/${listingId}/${Date.now()}-${file.name}`;
+            const { error: upErr } = await _supabase.storage.from('listing-videos').upload(path, file, { upsert: false });
+            if (upErr) {
+            console.warn('Video upload failed for', file.name, upErr);
+            continue;
             }
-            if (uploadedVideoRows.length) {
-                const { error: vidErr } = await _supabase.from('listing_videos').insert(uploadedVideoRows);
-                if (vidErr) toast('Failed to save video records: ' + vidErr.message, 'error');
-            }
+            const { data: urlData } = await _supabase.storage.from('listing-videos').getPublicUrl(path);
+            const publicUrl = urlData?.publicUrl || null;
+            uploadedVideoRows.push({ listing_id: listingId, video_url: publicUrl, filename: file.name, mime_type: file.type });
         }
 
-        toast('✅ Listing created successfully!', 'success');
-        closeModal('listingModal');
-        document.getElementById('listingForm').reset();
-        await loadListingsTable();
+        if (uploadedVideoRows.length) {
+            const { error: vidInsertErr } = await _supabase.from('listing_videos').insert(uploadedVideoRows);
+            if (vidInsertErr) console.warn('listing_videos insert error', vidInsertErr);
+        }
+        }
 
+        toast('Listing created! Pending approval.', 'success');
+        console.log('✅ Listing and media created');
     } catch (err) {
-        console.error('❌ [LISTING] Error:', err);
+        console.error('❌ [LISTING] Error creating listing:', err);
         toast('Failed to create listing: ' + (err.message || JSON.stringify(err)), 'error');
-    } finally {
-        if (createBtn) { createBtn.disabled = false; createBtn.textContent = 'Create Listing'; }
     }
 }
 
@@ -1722,14 +1846,14 @@ async function populatePromoListings() {
 
 async function handleLogout() {
     console.log("🚪 [AUTH] Logging out...");
+    
     try {
         await _supabase.auth.signOut();
-        toast("Logged out successfully. See you soon! 👋", "success");
         console.log("✅ [AUTH] Logged out successfully");
-        setTimeout(() => { window.location.href = "/"; }, 1500);
+        window.location.href = "/";
     } catch (err) {
         console.error("❌ [AUTH] Error logging out:", err);
-        toast("Logout failed: " + err.message, "error");
+        location.reload();
     }
 }
 
@@ -1771,189 +1895,505 @@ function escapeHtml(s) {
 /* ===========================
    EVENTS
    =========================== */
-async function loadEventsTable() {
-    console.log("📅 [EVENTS] Loading events...");
-    const tbody = document.getElementById('eventsTableBody');
-    if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
 
+/* ═══════════════════════════════════════════════
+   EVENTS — cards display + create with 5 images
+   ═══════════════════════════════════════════════ */
+const EVENTS_STORAGE = 'event-images';
+
+async function loadEventsCards() {
+    console.log('📅 [EVENTS] Loading events cards...');
+    let container = document.getElementById('eventsCardsContainer');
+    if (!container) {
+        const panel = document.getElementById('eventsPanel');
+        if (!panel) return;
+        const old = panel.querySelector('.events-inner');
+        if (old) old.remove();
+        const wrap = document.createElement('div');
+        wrap.className = 'events-inner';
+        wrap.innerHTML =
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
+            '<h3 style="font-size:18px;font-weight:700;color:#1a1a1a;margin:0;">Events</h3>' +
+            (CURRENT_ROLE === 'admin'
+                ? '<button onclick="openCreateEventModal()" style="background:#EB6753;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;gap:6px;"><i class=\"fa-solid fa-plus\"></i> Add Event</button>'
+                : '') +
+            '</div>' +
+            '<div id="eventsCardsContainer" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;"></div>';
+        panel.prepend(wrap);
+        container = document.getElementById('eventsCardsContainer');
+    }
+    container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#aaa;">Loading events...</div>';
     try {
-        let q = _supabase.from('events').select('id, title, event_date, location, owner_id, listing_id, created_at').order('event_date', { ascending: false }).limit(100);
-        if (CURRENT_ROLE === 'owner') q = q.eq('owner_id', CURRENT_PROFILE.id);
-
-        const { data, error } = await q;
+        const { data, error } = await _supabase
+            .from('events')
+            .select('id,title,description,images,province_id,district_id,sector_id,location_label,landmark,start_date,end_date,created_at')
+            .order('start_date', { ascending: true })
+            .limit(100);
         if (error) throw error;
-        if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;">No events yet.</td></tr>'; return; }
-
-        // Fetch linked listing titles
-        const lids = [...new Set(data.map(e => e.listing_id).filter(Boolean))];
-        const lstMap = {};
-        if (lids.length) {
-            const { data: ls } = await _supabase.from('listings').select('id, title').in('id', lids);
-            (ls || []).forEach(l => lstMap[l.id] = l.title);
+        if (!data || !data.length) {
+            container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:#ccc;">' +
+                '<i class="fa-regular fa-calendar" style="font-size:48px;margin-bottom:16px;display:block;"></i>' +
+                '<p>No events yet.' + (CURRENT_ROLE==='admin' ? ' Create the first one!' : '') + '</p></div>';
+            return;
         }
-
-        tbody.innerHTML = '';
-        data.forEach((ev, i) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${i + 1}</td>
-                <td><strong>${escapeHtml(ev.title)}</strong></td>
-                <td>${ev.event_date || '—'}</td>
-                <td>${escapeHtml(ev.location || '—')}</td>
-                <td>
-                    ${CURRENT_ROLE === 'admin' ? `<button class="btn-small btn-danger" onclick="deleteEvent('${ev.id}')"><i class="fa-solid fa-trash"></i></button>` : ''}
-                </td>
-            `;
-            tbody.appendChild(tr);
+        container.innerHTML = '';
+        data.forEach(ev => {
+            const img     = ev.images && ev.images.length ? ev.images[0] : null;
+            const sDate   = ev.start_date || ev.event_date;
+            const eDate   = ev.end_date;
+            const dateStr = sDate
+                ? (eDate && eDate !== sDate
+                    ? new Date(sDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' – ' + new Date(eDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+                    : new Date(sDate+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}))
+                : '—';
+            const locLine = [ev.location_label, ev.landmark].filter(Boolean).join(' · ');
+            const card = document.createElement('div');
+            card.style.cssText = 'background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);transition:transform 0.2s,box-shadow 0.2s;cursor:pointer;';
+            card.onmouseenter = () => { card.style.transform='translateY(-4px)'; card.style.boxShadow='0 12px 32px rgba(0,0,0,0.14)'; };
+            card.onmouseleave = () => { card.style.transform=''; card.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; };
+            card.innerHTML =
+                '<div style="height:180px;overflow:hidden;background:#f0f0f0;position:relative;">' +
+                (img ? '<img src="' + escapeHtml(img) + '" style="width:100%;height:100%;object-fit:cover;">' :
+                    '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><i class="fa-regular fa-calendar" style="font-size:40px;color:#ddd;"></i></div>') +
+                '<div style="position:absolute;top:12px;left:12px;background:rgba(235,103,83,0.9);color:#fff;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;">' +
+                '<i class="fa-solid fa-calendar-day"></i> ' + dateStr + '</div></div>' +
+                '<div style="padding:16px;">' +
+                '<h4 style="font-size:16px;font-weight:700;color:#1a1a1a;margin:0 0 6px;">' + escapeHtml(ev.title) + '</h4>' +
+                '<p style="font-size:13px;color:#888;margin:0 0 8px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">' + escapeHtml(ev.description||'') + '</p>' +
+                (locLine ? '<p style="font-size:12px;color:#EB6753;margin:0 0 12px;"><i class="fa-solid fa-location-dot"></i> ' + escapeHtml(locLine) + '</p>' : '') +
+                '<div style="display:flex;gap:8px;">' +
+                '<a href="/Event/?id=' + ev.id + '" style="flex:1;text-align:center;background:#f5f5f5;color:#333;padding:8px;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;"><i class="fa-solid fa-eye"></i> View</a>' +
+                (CURRENT_ROLE === 'admin'
+                    ? '<button onclick="deleteEvent(\'' + ev.id + '\')" style="flex:1;background:#fde8e8;color:#e74c3c;border:none;padding:8px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;"><i class="fa-solid fa-trash"></i> Delete</button>'
+                    : '') +
+                '</div></div>';
+            container.appendChild(card);
         });
-        console.log("✅ [EVENTS] Table loaded");
+        console.log('✅ [EVENTS] Cards rendered:', data.length);
     } catch (err) {
-        console.error("❌ [EVENTS]", err);
-        tbody.innerHTML = `<tr><td colspan="5" style="color:red;">${err.message}</td></tr>`;
+        console.error('❌ [EVENTS]', err);
+        container.innerHTML = '<div style="grid-column:1/-1;color:red;padding:20px;">' + escapeHtml(err.message) + '</div>';
     }
 }
 
+/* ── Build event create modal completely in JS (no HTML dependency) ── */
+async function openCreateEventModal() {
+    let modal = document.getElementById('_createEventModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = '_createEventModal';
+        modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;';
+        modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+        document.body.appendChild(modal);
+    }
+
+    // Load provinces for dropdowns
+    const { data: provs } = await _supabase.from('provinces').select('id,name').order('name');
+    const provOpts = '<option value="">Select Province</option>' +
+        (provs||[]).map(p => '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>').join('');
+
+    const IS = 'width:100%;padding:11px 14px;border:1.5px solid #ebebeb;border-radius:10px;font-size:14px;outline:none;font-family:Inter,sans-serif;box-sizing:border-box;background:#fff;';
+
+    modal.innerHTML =
+        '<div style="background:#fff;border-radius:20px;padding:32px;max-width:580px;width:100%;margin:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.28);">' +
+        '<button onclick="document.getElementById(\'_createEventModal\').style.display=\'none\'" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;cursor:pointer;color:#aaa;line-height:1;">&times;</button>' +
+        '<h3 style="font-size:22px;font-weight:800;color:#1a1a1a;margin:0 0 6px;">New Event</h3>' +
+        '<p style="font-size:13px;color:#aaa;margin:0 0 24px;">Fill in the details below</p>' +
+
+        _evtFld('Title *', '<input id="_evtTitle" placeholder="Event title" style="' + IS + '">') +
+        _evtFld('Description', '<textarea id="_evtDesc" placeholder="What is this event about?" style="' + IS + 'min-height:80px;resize:vertical;"></textarea>') +
+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+        _evtFld('Start Date *', '<input id="_evtStart" type="date" style="' + IS + '">') +
+        _evtFld('End Date <span style="color:#aaa;font-weight:400;">(leave empty if one day)</span>', '<input id="_evtEnd" type="date" style="' + IS + '">') +
+        '</div>' +
+
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">' +
+        _evtFld('Province', '<select id="_evtProvince" onchange="_evtLoadDistricts()" style="' + IS + '">' + provOpts + '</select>') +
+        _evtFld('District', '<select id="_evtDistrict" onchange="_evtLoadSectors()" style="' + IS + '"><option value="">Select District</option></select>') +
+        _evtFld('Sector', '<select id="_evtSector" style="' + IS + '"><option value="">Select Sector</option></select>') +
+        '</div>' +
+
+        _evtFld('Landmark / Venue', '<input id="_evtLandmark" placeholder="e.g. Kigali Convention Centre" style="' + IS + '">') +
+
+        _evtFld('Images <span style="color:#aaa;font-weight:400;">(up to 5)</span>',
+            '<input id="_evtImages" type="file" accept="image/*" multiple style="' + IS + 'padding:8px;border-style:dashed;">' +
+            '<p style="font-size:11px;color:#aaa;margin:4px 0 0;">Select up to 5 images. First image used as cover.</p>') +
+
+        '<button id="_evtCreateBtn" onclick="handleCreateEvent()" style="width:100%;background:#EB6753;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;margin-top:8px;">' +
+        '<i class="fa-solid fa-calendar-plus"></i> Create Event</button></div>';
+
+    modal.style.display = 'flex';
+}
+window.openCreateEventModal = openCreateEventModal;
+
+function _evtFld(label, inner) {
+    return '<div style="margin-bottom:14px;"><label style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">' + label + '</label>' + inner + '</div>';
+}
+
+window._evtLoadDistricts = async function() {
+    const provId = document.getElementById('_evtProvince')?.value;
+    const dSel   = document.getElementById('_evtDistrict');
+    const sSel   = document.getElementById('_evtSector');
+    if (dSel) dSel.innerHTML = '<option value="">Select District</option>';
+    if (sSel) sSel.innerHTML = '<option value="">Select Sector</option>';
+    if (!provId) return;
+    const { data } = await _supabase.from('districts').select('id,name').eq('province_id', provId).order('name');
+    (data||[]).forEach(d => { const o = document.createElement('option'); o.value=d.id; o.textContent=d.name; dSel.appendChild(o); });
+};
+window._evtLoadSectors = async function() {
+    const distId = document.getElementById('_evtDistrict')?.value;
+    const sSel   = document.getElementById('_evtSector');
+    if (sSel) sSel.innerHTML = '<option value="">Select Sector</option>';
+    if (!distId) return;
+    const { data } = await _supabase.from('sectors').select('id,name').eq('district_id', distId).order('name');
+    (data||[]).forEach(s => { const o = document.createElement('option'); o.value=s.id; o.textContent=s.name; sSel.appendChild(o); });
+};
+
 async function handleCreateEvent() {
-    const title = document.getElementById('evtTitle')?.value?.trim();
-    const eventDate = document.getElementById('evtDate')?.value;
-    const location = document.getElementById('evtLoc')?.value?.trim();
+    const title    = document.getElementById('_evtTitle')?.value?.trim();
+    const desc     = document.getElementById('_evtDesc')?.value?.trim() || null;
+    const startD   = document.getElementById('_evtStart')?.value;
+    const endD     = document.getElementById('_evtEnd')?.value || null;
+    const provId   = document.getElementById('_evtProvince')?.value || null;
+    const distId   = document.getElementById('_evtDistrict')?.value || null;
+    const sectId   = document.getElementById('_evtSector')?.value || null;
+    const landmark = document.getElementById('_evtLandmark')?.value?.trim() || null;
+    const files    = document.getElementById('_evtImages')?.files;
 
-    if (!title || !eventDate || !location) { toast('Fill all event fields.', 'warning'); return; }
+    if (!title || !startD) { toast('Title and start date are required.', 'warning'); return; }
 
-    const ownerId = CURRENT_PROFILE?.id || null;
+    const btn = document.getElementById('_evtCreateBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating...'; }
 
     try {
+        // Build human-readable location label
+        const locParts = [];
+        if (sectId) { const { data: s } = await _supabase.from('sectors').select('name').eq('id', Number(sectId)).single(); if (s) locParts.push(s.name); }
+        if (distId) { const { data: d } = await _supabase.from('districts').select('name').eq('id', Number(distId)).single(); if (d) locParts.push(d.name); }
+        if (provId) { const { data: p } = await _supabase.from('provinces').select('name').eq('id', Number(provId)).single(); if (p) locParts.push(p.name); }
+        const locationLabel = locParts.join(', ') || null;
+
+        // Upload up to 5 images
+        const imageUrls = [];
+        if (files && files.length) {
+            const toUpload = Array.from(files).slice(0, 5);
+            for (const file of toUpload) {
+                const path = 'events/' + Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                const { error: upErr } = await _supabase.storage.from('event-images').upload(path, file, { upsert: false });
+                if (!upErr) {
+                    const { data: pub } = _supabase.storage.from('event-images').getPublicUrl(path);
+                    if (pub?.publicUrl) imageUrls.push(pub.publicUrl);
+                } else { console.warn('Event image upload failed:', upErr.message); }
+            }
+        }
+
         const { error } = await _supabase.from('events').insert([{
-            title, event_date: eventDate, location, owner_id: ownerId
+            title, description: desc,
+            start_date: startD,
+            end_date: endD || startD,
+            province_id: provId ? Number(provId) : null,
+            district_id: distId ? Number(distId) : null,
+            sector_id:   sectId ? Number(sectId) : null,
+            location_label: locationLabel,
+            landmark,
+            images: imageUrls,
+            created_by: CURRENT_PROFILE?.id || null
         }]);
         if (error) throw error;
+
         toast('Event created!', 'success');
-        closeModal('eventModal');
-        document.getElementById('eventForm')?.reset();
-        await loadEventsTable();
+        const modal = document.getElementById('_createEventModal');
+        if (modal) modal.style.display = 'none';
+        await loadEventsCards();
     } catch (err) {
-        console.error("❌ [EVENTS] create", err);
-        toast('Failed to create event: ' + err.message, 'error');
+        console.error('❌ [EVENTS] create:', err);
+        toast('Failed: ' + err.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Create Event'; }
     }
 }
 
 async function deleteEvent(eventId) {
-    if (!confirm('Delete this event?')) return;
+    if (!confirm('Delete this event? This cannot be undone.')) return;
     try {
         const { error } = await _supabase.from('events').delete().eq('id', eventId);
         if (error) throw error;
         toast('Event deleted.', 'success');
-        await loadEventsTable();
+        await loadEventsCards();
     } catch (err) {
-        toast('Failed to delete event: ' + err.message, 'error');
+        toast('Failed to delete: ' + err.message, 'error');
     }
 }
 window.deleteEvent = deleteEvent;
 
-/* ===========================
-   PROMOTIONS
-   =========================== */
-async function loadPromotionsTable() {
-    console.log("🏷️ [PROMOS] Loading promotions...");
-    const tbody = document.getElementById('promotionsTableBody');
-    if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="8">Loading...</td></tr>';
+
+/* ═══════════════════════════════════════════════════
+   PROMOTIONS — card display (no promo code, listing required)
+   ═══════════════════════════════════════════════════ */
+async function loadPromotionsCards() {
+    console.log('🏷️ [PROMOS] Loading promotion cards...');
+    let container = document.getElementById('promosCardsContainer');
+    if (!container) {
+        const panel = document.getElementById('promotionsPanel');
+        if (!panel) return;
+        const old = panel.querySelector('.promos-inner');
+        if (old) old.remove();
+        const wrap = document.createElement('div');
+        wrap.className = 'promos-inner';
+        wrap.style.cssText = 'padding:20px;';
+        wrap.innerHTML =
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">' +
+            '<h3 style="font-size:18px;font-weight:700;color:#1a1a1a;margin:0;">Active Promotions</h3>' +
+            '<button onclick="openCreatePromoModal()" style="background:#EB6753;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;gap:6px;">' +
+            '<i class="fa-solid fa-plus"></i> Add Promotion</button></div>' +
+            '<div id="promosCardsContainer" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;"></div>';
+        panel.prepend(wrap);
+        container = document.getElementById('promosCardsContainer');
+    }
+    container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#aaa;">Loading...</div>';
 
     try {
         const { data, error } = await _supabase
             .from('promotions')
-            .select('id, code, description, discount, listing_id, start_date, end_date, banner_url, created_at')
-            .order('created_at', { ascending: false })
-            .limit(100);
+            .select('id,title,description,listing_id,discount,start_date,end_date,banner_url,created_at')
+            .order('created_at', { ascending: false });
         if (error) throw error;
-        if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;">No promotions yet.</td></tr>'; return; }
 
-        // Fetch listing titles
-        const lids = [...new Set(data.map(p => p.listing_id).filter(Boolean))];
-        const lstMap = {};
+        const lids = [...new Set((data || []).map(p => p.listing_id).filter(Boolean))];
+        const lstMap = {}, lstImgMap = {};
         if (lids.length) {
-            const { data: ls } = await _supabase.from('listings').select('id, title').in('id', lids);
-            (ls || []).forEach(l => lstMap[l.id] = l.title);
+            const { data: ls } = await _supabase.from('listings').select('id,title').in('id', lids);
+            (ls || []).forEach(l => { lstMap[l.id] = l.title; });
+            const { data: imgs } = await _supabase.from('listing_images').select('listing_id,image_url').in('listing_id', lids);
+            (imgs || []).forEach(i => { if (!lstImgMap[i.listing_id]) lstImgMap[i.listing_id] = i.image_url; });
         }
 
-        tbody.innerHTML = '';
-        data.forEach((p, i) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${i + 1}</td>
-                <td><strong>${escapeHtml(p.code || '—')}</strong></td>
-                <td>${p.banner_url ? `<img src="${escapeHtml(p.banner_url)}" style="width:60px;height:40px;object-fit:cover;border-radius:6px;">` : '—'}</td>
-                <td><span style="background:#fff3cd;color:#856404;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">${p.discount || 0}% OFF</span></td>
-                <td>${escapeHtml(lstMap[p.listing_id] || 'General')}</td>
-                <td>${escapeHtml(p.description || '—')}</td>
-                <td style="font-size:12px;">${p.start_date || '—'} → ${p.end_date || '—'}</td>
-                <td>
-                    ${CURRENT_ROLE === 'admin' ? `<button class="btn-small btn-danger" onclick="deletePromotion('${p.id}')"><i class="fa-solid fa-trash"></i></button>` : ''}
-                </td>
-            `;
-            tbody.appendChild(tr);
+        if (!data || !data.length) {
+            container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:#ccc;">' +
+                '<i class="fa-solid fa-tag" style="font-size:48px;margin-bottom:16px;display:block;"></i><p>No promotions yet.</p></div>';
+            return;
+        }
+        container.innerHTML = '';
+        const today = new Date().toISOString().split('T')[0];
+        data.forEach(p => {
+            const imgSrc = p.banner_url || lstImgMap[p.listing_id] || null;
+            const isActive = p.start_date <= today && p.end_date >= today;
+            const card = document.createElement('div');
+            card.style.cssText = 'background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;';
+            card.onmouseenter = () => { card.style.transform='translateY(-4px)'; card.style.boxShadow='0 12px 32px rgba(0,0,0,0.13)'; };
+            card.onmouseleave = () => { card.style.transform=''; card.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'; };
+            card.onclick = () => openPromoEditModal(p, lstImgMap[p.listing_id]);
+            card.innerHTML =
+                '<div style="height:160px;overflow:hidden;background:#f5f5f5;position:relative;">' +
+                (imgSrc ? '<img src="' + escapeHtml(imgSrc) + '" style="width:100%;height:100%;object-fit:cover;">' :
+                    '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-tag" style="font-size:36px;color:#ddd;"></i></div>') +
+                '<div style="position:absolute;top:10px;left:10px;background:#EB6753;color:#fff;padding:5px 14px;border-radius:20px;font-size:14px;font-weight:800;">' + p.discount + '% OFF</div>' +
+                '<div style="position:absolute;top:10px;right:10px;background:' + (isActive ? 'rgba(46,204,113,0.9)' : 'rgba(150,150,150,0.9)') + ';color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">' + (isActive ? 'ACTIVE' : 'INACTIVE') + '</div></div>' +
+                '<div style="padding:16px;">' +
+                '<h4 style="font-size:15px;font-weight:700;color:#1a1a1a;margin:0 0 4px;">' + escapeHtml(p.title || '') + '</h4>' +
+                '<p style="font-size:12px;color:#EB6753;margin:0 0 6px;font-weight:600;"><i class="fa-solid fa-house"></i> ' + escapeHtml(lstMap[p.listing_id] || '—') + '</p>' +
+                (p.description ? '<p style="font-size:12px;color:#888;margin:0 0 10px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">' + escapeHtml(p.description) + '</p>' : '') +
+                '<p style="font-size:11px;color:#aaa;margin:0;"><i class="fa-regular fa-calendar"></i> ' + (p.start_date||'') + ' → ' + (p.end_date||'') + '</p>' +
+                '<p style="font-size:11px;color:#bbb;margin:4px 0 0;"><i class="fa-solid fa-pencil"></i> Click to edit</p></div>';
+            container.appendChild(card);
         });
-        console.log("✅ [PROMOS] Table loaded");
+        console.log('✅ [PROMOS] Cards rendered:', data.length);
     } catch (err) {
-        console.error("❌ [PROMOS]", err);
-        tbody.innerHTML = `<tr><td colspan="8" style="color:red;">${err.message}</td></tr>`;
+        console.error('❌ [PROMOS]', err);
+        container.innerHTML = '<div style="grid-column:1/-1;color:red;padding:20px;">' + err.message + '</div>';
     }
 }
 
+function openPromoEditModal(promo, listingImgFallback) {
+    let modal = document.getElementById('promoEditModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'promoEditModal';
+        modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center;';
+        modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+        document.body.appendChild(modal);
+    }
+    const imgPreview = promo.banner_url || listingImgFallback;
+    modal.innerHTML =
+        '<div style="background:#fff;border-radius:20px;padding:32px;max-width:520px;width:90%;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+        '<button onclick="document.getElementById(\'promoEditModal\').style.display=\'none\'" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#888;line-height:1;">&times;</button>' +
+        '<h3 style="font-size:20px;font-weight:800;color:#1a1a1a;margin:0 0 6px;">Edit Promotion</h3>' +
+        '<p style="font-size:13px;color:#aaa;margin:0 0 24px;">Update details, add a banner image, or delete</p>' +
+        fld('Title', '<input id="epTitle" value="' + escapeHtml(promo.title||'') + '" style="' + inp + '">') +
+        fld('Description', '<textarea id="epDesc" style="' + inp + 'min-height:70px;resize:vertical;">' + escapeHtml(promo.description||'') + '</textarea>') +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+        fld('Discount (%)', '<input id="epDiscount" type="number" min="1" max="100" value="' + promo.discount + '" style="' + inp + '">') +
+        fld('Start Date', '<input id="epStart" type="date" value="' + (promo.start_date||'') + '" style="' + inp + '">') +
+        '</div>' +
+        fld('End Date', '<input id="epEnd" type="date" value="' + (promo.end_date||'') + '" style="' + inp + '">') +
+        fld('Banner Image <span style="color:#aaa;font-weight:400;">(optional)</span>',
+            (imgPreview ? '<img src="' + escapeHtml(imgPreview) + '" style="width:100%;height:110px;object-fit:cover;border-radius:10px;margin-bottom:8px;">' : '') +
+            '<input id="epImage" type="file" accept="image/*" style="width:100%;padding:8px;border:1.5px dashed #ddd;border-radius:10px;font-size:13px;">') +
+        '<div style="display:flex;gap:10px;margin-top:8px;">' +
+        '<button id="epSaveBtn" onclick="savePromoEdit(\'' + promo.id + '\')" style="flex:1;background:#EB6753;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Save Changes</button>' +
+        '<button onclick="if(confirm(\'Delete this promotion?\'))deletePromotion(\'' + promo.id + '\')" style="background:#fde8e8;color:#e74c3c;border:none;padding:14px 18px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;"><i class="fa-solid fa-trash"></i></button>' +
+        '</div></div>';
+    modal.style.display = 'flex';
+}
+
+const inp = 'width:100%;padding:11px 14px;border:1.5px solid #ebebeb;border-radius:10px;font-size:14px;outline:none;font-family:Inter,sans-serif;box-sizing:border-box;';
+function fld(label, inner) {
+    return '<div style="margin-bottom:14px;"><label style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">' + label + '</label>' + inner + '</div>';
+}
+window.openPromoEditModal = openPromoEditModal;
+
+async function savePromoEdit(promoId) {
+    const title    = document.getElementById('epTitle')?.value?.trim();
+    const desc     = document.getElementById('epDesc')?.value?.trim() || null;
+    const discount = Number(document.getElementById('epDiscount')?.value || 0);
+    const start    = document.getElementById('epStart')?.value;
+    const end      = document.getElementById('epEnd')?.value;
+    const file     = document.getElementById('epImage')?.files?.[0];
+    if (!title || !discount || !start || !end) { toast('Fill all required fields.', 'warning'); return; }
+    const btn = document.getElementById('epSaveBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+    try {
+        let banner_url;
+        if (file) {
+            const path = 'promos/' + Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const { error: upErr } = await _supabase.storage.from('promotion-images').upload(path, file, { upsert: false });
+            if (!upErr) {
+                const { data: pub } = _supabase.storage.from('promotion-images').getPublicUrl(path);
+                banner_url = pub?.publicUrl;
+            }
+        }
+        const updates = { title, description: desc, discount, start_date: start, end_date: end };
+        if (banner_url) updates.banner_url = banner_url;
+        const { error } = await _supabase.from('promotions').update(updates).eq('id', promoId);
+        if (error) throw error;
+        toast('Promotion updated!', 'success');
+        document.getElementById('promoEditModal').style.display = 'none';
+        await loadPromotionsCards();
+    } catch (err) {
+        toast('Failed: ' + err.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Save Changes'; }
+    }
+}
+window.savePromoEdit = savePromoEdit;
+
+/* ── Self-building promotion create modal (no HTML dependency) ── */
+async function openCreatePromoModal() {
+    let modal = document.getElementById('_createPromoModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = '_createPromoModal';
+        modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;';
+        modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+        document.body.appendChild(modal);
+    }
+
+    // Fetch owner's listings for the dropdown
+    let listingQuery = _supabase.from('listings').select('id,title').eq('status','approved').order('title');
+    if (CURRENT_ROLE === 'owner') listingQuery = listingQuery.eq('owner_id', CURRENT_PROFILE.id);
+    const { data: listings } = await listingQuery;
+    const lstOpts = '<option value="">— Select a listing —</option>' +
+        (listings||[]).map(l => '<option value="' + l.id + '">' + escapeHtml(l.title) + '</option>').join('');
+
+    const IS = 'width:100%;padding:11px 14px;border:1.5px solid #ebebeb;border-radius:10px;font-size:14px;outline:none;font-family:Inter,sans-serif;box-sizing:border-box;background:#fff;';
+
+    modal.innerHTML =
+        '<div style="background:#fff;border-radius:20px;padding:32px;max-width:540px;width:100%;margin:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.28);">' +
+        '<button onclick="document.getElementById(\'_createPromoModal\').style.display=\'none\'" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;cursor:pointer;color:#aaa;line-height:1;">&times;</button>' +
+        '<h3 style="font-size:22px;font-weight:800;color:#1a1a1a;margin:0 0 6px;">New Promotion</h3>' +
+        '<p style="font-size:13px;color:#aaa;margin:0 0 24px;">Promotions must be linked to a listing</p>' +
+
+        _pFld('Title *', '<input id="_promoTitle" placeholder="e.g. Weekend Special" style="' + IS + '">') +
+        _pFld('Apply to Listing *',
+            '<select id="_promoListingId" style="' + IS + '">' + lstOpts + '</select>') +
+        _pFld('Description', '<textarea id="_promoDesc" placeholder="Short description (optional)" style="' + IS + 'min-height:70px;resize:vertical;"></textarea>') +
+
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">' +
+        _pFld('Discount % *', '<input id="_promoDiscount" type="number" min="1" max="100" placeholder="e.g. 20" style="' + IS + '">') +
+        _pFld('Start Date *', '<input id="_promoStart" type="date" style="' + IS + '">') +
+        _pFld('End Date *',   '<input id="_promoEnd"   type="date" style="' + IS + '">') +
+        '</div>' +
+
+        _pFld('Banner Images <span style="color:#aaa;font-weight:400;">(optional, max 2)</span>',
+            '<input id="_promoImages" type="file" accept="image/*" multiple style="' + IS + 'padding:8px;border-style:dashed;">' +
+            '<p style="font-size:11px;color:#aaa;margin:4px 0 0;">If no image, the listing\'s own image will be used.</p>') +
+
+        '<button id="_promoCreateBtn" onclick="handleCreatePromo()" style="width:100%;background:#EB6753;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;margin-top:8px;">' +
+        '<i class="fa-solid fa-tag"></i> Create Promotion</button></div>';
+
+    modal.style.display = 'flex';
+}
+window.openCreatePromoModal = openCreatePromoModal;
+
+function _pFld(label, inner) {
+    return '<div style="margin-bottom:14px;"><label style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">' + label + '</label>' + inner + '</div>';
+}
+
 async function handleCreatePromo() {
-    const code = document.getElementById('promoCode')?.value?.trim();
-    const discount = Number(document.getElementById('promoDiscount')?.value || 0);
-    const start = document.getElementById('promoStart')?.value;
-    const end = document.getElementById('promoEnd')?.value;
-    const desc = document.getElementById('promoDesc')?.value?.trim() || null;
-    const listingId = document.getElementById('promoListingId')?.value || null;
-    const imageFile = document.getElementById('promoImage')?.files?.[0] || null;
+    const title     = document.getElementById('_promoTitle')?.value?.trim();
+    const discount  = Number(document.getElementById('_promoDiscount')?.value || 0);
+    const start     = document.getElementById('_promoStart')?.value;
+    const end       = document.getElementById('_promoEnd')?.value;
+    const desc      = document.getElementById('_promoDesc')?.value?.trim() || null;
+    const listingId = document.getElementById('_promoListingId')?.value || null;
+    const files     = document.getElementById('_promoImages')?.files;
 
-    if (!code || !discount || !start || !end) { toast('Fill required promo fields.', 'warning'); return; }
+    if (!title)     { toast('Please enter a title.',           'warning'); return; }
+    if (!listingId) { toast('Please select a listing.',        'warning'); return; }
+    if (!discount)  { toast('Please enter a discount %.',      'warning'); return; }
+    if (!start)     { toast('Please set a start date.',        'warning'); return; }
+    if (!end)       { toast('Please set an end date.',         'warning'); return; }
+    if (end < start){ toast('End date must be after start.',   'warning'); return; }
 
-    const createBtn = document.getElementById('createPromoBtn');
-    if (createBtn) { createBtn.disabled = true; createBtn.textContent = 'Creating...'; }
+    const btn = document.getElementById('_promoCreateBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating...'; }
 
     try {
+        // Upload up to 2 banner images, use first as banner_url
         let bannerUrl = null;
-        if (imageFile) {
-            const path = `promos/${Date.now()}-${imageFile.name}`;
-            const { error: upErr } = await _supabase.storage.from('promotion-images').upload(path, imageFile, { upsert: false });
-            if (!upErr) {
-                const { data: urlData } = _supabase.storage.from('promotion-images').getPublicUrl(path);
-                bannerUrl = urlData?.publicUrl || null;
-            } else {
-                console.warn('Promo banner upload failed:', upErr.message);
+        if (files && files.length) {
+            const toUpload = Array.from(files).slice(0, 2);
+            for (const file of toUpload) {
+                const path = 'promos/' + Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                const { error: upErr } = await _supabase.storage.from('promotion-images').upload(path, file, { upsert: false });
+                if (!upErr) {
+                    const { data: pub } = _supabase.storage.from('promotion-images').getPublicUrl(path);
+                    if (!bannerUrl && pub?.publicUrl) bannerUrl = pub.publicUrl;
+                } else { console.warn('Promo image upload failed:', upErr.message); }
             }
         }
 
         const { error } = await _supabase.from('promotions').insert([{
-            code, discount, start_date: start, end_date: end,
-            description: desc, listing_id: listingId || null, banner_url: bannerUrl
+            title, description: desc, discount,
+            start_date: start, end_date: end,
+            listing_id: listingId,
+            banner_url: bannerUrl
         }]);
         if (error) throw error;
+
         toast('Promotion created!', 'success');
-        closeModal('promotionModal');
-        document.getElementById('promoForm')?.reset();
-        await loadPromotionsTable();
+        const modal = document.getElementById('_createPromoModal');
+        if (modal) modal.style.display = 'none';
+        await loadPromotionsCards();
     } catch (err) {
-        console.error("❌ [PROMOS] create", err);
+        console.error('❌ [PROMOS] create:', err);
         toast('Failed: ' + err.message, 'error');
     } finally {
-        if (createBtn) { createBtn.disabled = false; createBtn.textContent = 'Create Promotion'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-tag"></i> Create Promotion'; }
     }
 }
 
 async function deletePromotion(promoId) {
-    if (!confirm('Delete this promotion?')) return;
+    const modal = document.getElementById('promoEditModal');
+    if (modal) modal.style.display = 'none';
     try {
         const { error } = await _supabase.from('promotions').delete().eq('id', promoId);
         if (error) throw error;
         toast('Promotion deleted.', 'success');
-        await loadPromotionsTable();
+        await loadPromotionsCards();
     } catch (err) {
-        toast('Failed to delete: ' + err.message, 'error');
+        toast('Failed: ' + err.message, 'error');
     }
 }
 window.deletePromotion = deletePromotion;
@@ -1999,51 +2439,208 @@ async function handleSaveSettings() {
     }
 }
 
-/* expose new functions globally */
-window.loadEventsTable = loadEventsTable;
-window.handleCreateEvent = handleCreateEvent;
-window.loadPromotionsTable = loadPromotionsTable;
-window.handleCreatePromo = handleCreatePromo;
-window.handleSaveSettings = handleSaveSettings;
+/* ═══════════════════════════════════════════════════
+   LISTING REQUESTS (admin approves before listing goes live)
+   ═══════════════════════════════════════════════════ */
+function injectListingRequestsTab() {
+    if (document.querySelector('[data-tab="listing-requests"]')) return;
+    const sidebar = document.getElementById('sidebar') || document.querySelector('.sidebar-nav') || document.querySelector('nav');
+    if (!sidebar) return;
+    const bookingsBtn = sidebar.querySelector('[data-tab="bookings"]');
+    if (!bookingsBtn) return;
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn';
+    btn.setAttribute('data-tab', 'listing-requests');
+    btn.innerHTML = '<i class="fa-solid fa-list-check"></i> Listing Requests';
+    bookingsBtn.after(btn);
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        togglePanels('listing-requestsPanel');
+        loadListingRequests();
+    });
 
-/* ===========================
-    GLOBAL EXPORTS
-    =========================== */
-window.approveListing = approveListing;
-window.toggleListingAvailability = toggleListingAvailability;
-window.approveBooking = approveBooking;
-window.demoMarkPaid = demoMarkPaid;
-window.promoteToOwner = promoteToOwner;
-window.openModal = openModal;
-window.closeModal = closeModal;
-window.filterTable = filterTable;
-window.togglePanels = togglePanels;
-
-console.log("✨ [ADMIN] Dashboard.js loaded and ready!");
-
-/* ═══════════════════════════════════
-   TOGGLE FEATURED
-   ═══════════════════════════════════ */
-async function toggleFeatured(listingId, isFeatured) {
-    const { error } = await _supabase
-        .from('listings')
-        .update({ featured: isFeatured })
-        .eq('id', listingId);
-
-    if (error) {
-        toast('Failed to update featured status: ' + error.message, 'error');
-        // Revert the checkbox visually
-        const cb = document.getElementById('feat_' + listingId);
-        if (cb) cb.checked = !isFeatured;
-    } else {
-        toast(isFeatured ? '⭐ Added to featured listings!' : 'Removed from featured listings.', 'success');
+    // Create panel if missing
+    if (!document.getElementById('listing-requestsPanel')) {
+        const allPanels = document.querySelector('.content-area, .main-content, main, #contentArea');
+        if (allPanels) {
+            const panel = document.createElement('div');
+            panel.id = 'listing-requestsPanel';
+            panel.className = 'panel';
+            panel.style.display = 'none';
+            panel.innerHTML =
+                '<div style="padding:28px;">' +
+                '<h2 style="font-size:22px;font-weight:800;color:#1a1a1a;margin:0 0 6px;">Listing Requests</h2>' +
+                '<p style="color:#aaa;font-size:14px;margin:0 0 24px;">Review and approve owner-submitted listings before they go live</p>' +
+                '<div id="listingRequestsContainer"></div></div>';
+            allPanels.appendChild(panel);
+        }
     }
 }
 
+async function loadListingRequests() {
+    console.log('📋 [REQUESTS] Loading pending listing requests...');
+    let container = document.getElementById('listingRequestsContainer');
+    if (!container) {
+        const panel = document.getElementById('listing-requestsPanel');
+        if (!panel) { console.warn('listing-requestsPanel missing'); return; }
+        container = panel.querySelector('#listingRequestsContainer') || panel;
+    }
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:#aaa;">Loading requests...</div>';
+
+    try {
+        const { data, error } = await _supabase
+            .from('listings')
+            .select('id,title,price,currency,category_slug,province_id,district_id,owner_id,created_at,status')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+
+        // Batch owner names
+        const ownerIds = [...new Set((data||[]).map(l => l.owner_id).filter(Boolean))];
+        const ownerMap = {};
+        if (ownerIds.length) {
+            const { data: owners } = await _supabase.from('profiles').select('id,full_name,email').in('id', ownerIds);
+            (owners||[]).forEach(o => { ownerMap[o.id] = o; });
+        }
+        // Batch province + district names
+        const pvIds = [...new Set((data||[]).map(l=>l.province_id).filter(Boolean))];
+        const dtIds = [...new Set((data||[]).map(l=>l.district_id).filter(Boolean))];
+        const pvMap = {}, dtMap = {};
+        if (pvIds.length) { const {data:ps} = await _supabase.from('provinces').select('id,name').in('id',pvIds); (ps||[]).forEach(p=>pvMap[p.id]=p.name); }
+        if (dtIds.length) { const {data:ds} = await _supabase.from('districts').select('id,name').in('id',dtIds); (ds||[]).forEach(d=>dtMap[d.id]=d.name); }
+
+        if (!data || !data.length) {
+            container.innerHTML = '<div style="text-align:center;padding:60px;color:#ccc;"><i class="fa-solid fa-inbox" style="font-size:48px;display:block;margin-bottom:16px;"></i><p>No pending listing requests.</p></div>';
+            return;
+        }
+
+        container.innerHTML = '';
+        data.forEach(l => {
+            const owner = ownerMap[l.owner_id] || {};
+            const loc = [dtMap[l.district_id], pvMap[l.province_id]].filter(Boolean).join(', ') || 'Rwanda';
+            const row = document.createElement('div');
+            row.style.cssText = 'background:#fff;border-radius:16px;padding:20px 24px;margin-bottom:14px;display:flex;align-items:center;gap:20px;box-shadow:0 4px 16px rgba(0,0,0,0.07);flex-wrap:wrap;';
+            row.innerHTML =
+                '<div style="flex:1;min-width:200px;">' +
+                '<h4 style="font-size:16px;font-weight:700;color:#1a1a1a;margin:0 0 4px;">' + escapeHtml(l.title) + '</h4>' +
+                '<p style="font-size:13px;color:#888;margin:0;"><i class="fa-solid fa-location-dot" style="color:#EB6753;"></i> ' + escapeHtml(loc) + ' &nbsp;|&nbsp; ' +
+                '<i class="fa-solid fa-tag" style="color:#EB6753;"></i> ' + Number(l.price||0).toLocaleString('en-RW') + ' ' + (l.currency||'RWF') + '</p></div>' +
+                '<div style="min-width:180px;">' +
+                '<p style="font-size:13px;color:#555;margin:0;font-weight:600;">' + escapeHtml(owner.full_name||'Unknown') + '</p>' +
+                '<p style="font-size:12px;color:#aaa;margin:2px 0 0;">' + escapeHtml(owner.email||'') + '</p></div>' +
+                '<div style="display:flex;gap:8px;flex-shrink:0;">' +
+                '<button onclick="approveListingRequest(\'' + l.id + '\',this)" style="background:#e8f8f0;color:#27ae60;border:1px solid #b8e6ce;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;gap:6px;">' +
+                '<i class="fa-solid fa-check"></i> Approve</button>' +
+                '<button onclick="rejectListingRequest(\'' + l.id + '\',this)" style="background:#fde8e8;color:#e74c3c;border:1px solid #f5c6c6;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;gap:6px;">' +
+                '<i class="fa-solid fa-xmark"></i> Reject</button></div>';
+            container.appendChild(row);
+        });
+        console.log('✅ [REQUESTS] Loaded', data.length, 'pending listings');
+    } catch(err) {
+        console.error('❌ [REQUESTS]', err);
+        container.innerHTML = '<div style="color:red;padding:20px;">' + err.message + '</div>';
+    }
+}
+window.loadListingRequests = loadListingRequests;
+
+async function approveListingRequest(listingId, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Approving...'; }
+    try {
+        const { error } = await _supabase.from('listings').update({ status: 'approved' }).eq('id', listingId);
+        if (error) throw error;
+        toast('Listing approved — it is now live!', 'success');
+        await loadListingRequests();
+    } catch (err) {
+        toast('Failed: ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Approve'; }
+    }
+}
+window.approveListingRequest = approveListingRequest;
+
+async function rejectListingRequest(listingId, btn) {
+    if (!confirm('Reject and delete this listing request?')) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Rejecting...'; }
+    try {
+        const { error } = await _supabase.from('listings').delete().eq('id', listingId);
+        if (error) throw error;
+        toast('Listing request rejected.', 'warning');
+        await loadListingRequests();
+    } catch (err) {
+        toast('Failed: ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-xmark"></i> Reject'; }
+    }
+}
+window.rejectListingRequest = rejectListingRequest;
+
+/* ═══════════════════════════════════════════════════
+   OWNER — NEW BOOKINGS (pending only)
+   ═══════════════════════════════════════════════════ */
+async function loadNewBookings() {
+    console.log('🆕 [NEW BOOKINGS] Loading pending bookings...');
+    const container = document.getElementById('newBookingsContainer');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:#aaa;">Loading...</div>';
+
+    try {
+        const listingIds = await fetchOwnerListingIds();
+        if (!listingIds.length) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:#ccc;"><i class="fa-solid fa-inbox" style="font-size:36px;display:block;margin-bottom:12px;"></i><p>No listings yet.</p></div>';
+            return;
+        }
+        const { data, error } = await _supabase
+            .from('bookings')
+            .select('id,listing_id,user_id,start_date,end_date,total_amount,created_at')
+            .in('listing_id', listingIds)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+
+        if (!data || !data.length) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:#ccc;"><i class="fa-solid fa-check-circle" style="font-size:36px;display:block;margin-bottom:12px;color:#2ecc71;"></i><p>No new bookings waiting for approval.</p></div>';
+            return;
+        }
+
+        // Batch listing titles + user info
+        const lids = [...new Set(data.map(b=>b.listing_id))];
+        const uids = [...new Set(data.map(b=>b.user_id))];
+        const lstM = {}, usrM = {};
+        if (lids.length) { const {data:ls} = await _supabase.from('listings').select('id,title').in('id',lids); (ls||[]).forEach(l=>lstM[l.id]=l.title); }
+        if (uids.length) { const {data:us} = await _supabase.from('profiles').select('id,full_name,email').in('id',uids); (us||[]).forEach(u=>usrM[u.id]=u); }
+
+        container.innerHTML = '';
+        data.forEach(b => {
+            const user = usrM[b.user_id] || {};
+            const nights = b.start_date && b.end_date ? Math.max(1, Math.round((new Date(b.end_date)-new Date(b.start_date))/86400000)) : '?';
+            const row = document.createElement('div');
+            row.style.cssText = 'background:#fff;border-radius:14px;padding:18px 20px;margin-bottom:12px;display:flex;align-items:center;gap:16px;box-shadow:0 3px 12px rgba(0,0,0,0.07);flex-wrap:wrap;border-left:4px solid #f39c12;';
+            row.innerHTML =
+                '<div style="flex:1;min-width:160px;">' +
+                '<p style="font-size:14px;font-weight:700;color:#1a1a1a;margin:0 0 3px;">' + escapeHtml(lstM[b.listing_id]||'Unknown listing') + '</p>' +
+                '<p style="font-size:12px;color:#888;margin:0;"><i class="fa-regular fa-calendar" style="color:#EB6753;"></i> ' + (b.start_date||'') + ' → ' + (b.end_date||'') + ' (' + nights + ' nights)</p></div>' +
+                '<div style="min-width:160px;">' +
+                '<p style="font-size:13px;font-weight:600;color:#555;margin:0;">' + escapeHtml(user.full_name||'Guest') + '</p>' +
+                '<p style="font-size:12px;color:#aaa;margin:2px 0 0;">' + escapeHtml(user.email||'') + '</p></div>' +
+                '<p style="font-size:16px;font-weight:800;color:#EB6753;margin:0;min-width:100px;">' + Number(b.total_amount||0).toLocaleString('en-RW') + ' RWF</p>' +
+                '<div style="display:flex;gap:8px;">' +
+                '<button onclick="approveBooking(\'' + b.id + '\')" style="background:#e8f8f0;color:#27ae60;border:1px solid #b8e6ce;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;"><i class="fa-solid fa-check"></i> Approve</button>' +
+                '<button onclick="rejectBooking(\'' + b.id + '\')" style="background:#fde8e8;color:#e74c3c;border:1px solid #f5c6c6;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;"><i class="fa-solid fa-xmark"></i> Reject</button></div>';
+            container.appendChild(row);
+        });
+        console.log('✅ [NEW BOOKINGS] Loaded', data.length);
+    } catch (err) {
+        console.error('❌ [NEW BOOKINGS]', err);
+        container.innerHTML = '<div style="color:red;padding:16px;">' + err.message + '</div>';
+    }
+}
+window.loadNewBookings = loadNewBookings;
+
 /* expose new functions globally */
-window.loadEventsTable = loadEventsTable;
+window.loadEventsTable = loadEventsCards;
+window.loadEventsCards = loadEventsCards;
 window.handleCreateEvent = handleCreateEvent;
-window.loadPromotionsTable = loadPromotionsTable;
+window.loadPromotionsTable = loadPromotionsCards;
+window.loadPromotionsCards = loadPromotionsCards;
 window.handleCreatePromo = handleCreatePromo;
 window.handleSaveSettings = handleSaveSettings;
 
@@ -2053,6 +2650,7 @@ window.handleSaveSettings = handleSaveSettings;
 window.approveListing = approveListing;
 window.toggleListingAvailability = toggleListingAvailability;
 window.approveBooking = approveBooking;
+window.rejectBooking   = rejectBooking;
 window.demoMarkPaid = demoMarkPaid;
 window.promoteToOwner = promoteToOwner;
 window.openModal = openModal;
@@ -2061,3 +2659,184 @@ window.filterTable = filterTable;
 window.togglePanels = togglePanels;
 
 console.log("✨ [ADMIN] Dashboard.js loaded and ready!");
+
+/* ═══════════════════════════════════════════════
+   DOWNLOAD RECEIPT (PDF) — client-side via jsPDF
+   ═══════════════════════════════════════════════ */
+window.downloadReceipt = async function(bookingId) {
+    console.log('📄 [RECEIPT] Generating receipt for booking:', bookingId);
+    toast('Generating receipt...', 'info');
+
+    try {
+        // Fetch all data needed for PDF
+        const { data: booking } = await _supabase
+            .from('bookings').select('*').eq('id', bookingId).single();
+        
+        const { data: listing } = await _supabase
+            .from('listings').select('title, price, currency, address, province_id, district_id, owner_id')
+            .eq('id', booking.listing_id).single();
+
+        const { data: booker } = await _supabase
+            .from('profiles').select('full_name, email')
+            .eq('id', booking.user_id).single();
+
+        const { data: owner } = await _supabase
+            .from('profiles').select('full_name, email, phone')
+            .eq('id', listing?.owner_id).single();
+
+        let locationStr = listing?.address || 'Rwanda';
+        if (listing?.district_id || listing?.province_id) {
+            const [{ data: dist }, { data: prov }] = await Promise.all([
+                listing?.district_id ? _supabase.from('districts').select('name').eq('id', listing.district_id).single() : { data: null },
+                listing?.province_id ? _supabase.from('provinces').select('name').eq('id', listing.province_id).single() : { data: null },
+            ]);
+            locationStr = [dist?.name, prov?.name].filter(Boolean).join(', ') || locationStr;
+        }
+
+        const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        const nights = Math.ceil((new Date(booking.end_date) - new Date(booking.start_date)) / 86400000);
+        const payMethod = (booking.payment_method || '').replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const currency = listing?.currency || 'RWF';
+        const totalFmt = Number(booking.total_amount).toLocaleString('en-RW') + ' ' + currency;
+        const pricePerNight = Number(listing?.price || 0).toLocaleString('en-RW');
+        const receiptNo = 'RCP-' + booking.id.substring(0, 8).toUpperCase();
+        const issuedDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+        // Load jsPDF dynamically
+        if (!window.jspdf) {
+            await new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                s.onload = resolve; s.onerror = reject;
+                document.head.appendChild(s);
+            });
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+        const W = 210, M = 20;
+        let y = 0;
+
+        // ── Header band ──
+        doc.setFillColor(26, 26, 46);
+        doc.rect(0, 0, W, 44, 'F');
+        doc.setTextColor(235, 103, 83);
+        doc.setFontSize(26); doc.setFont('helvetica', 'bold');
+        doc.text('AfriStay', W / 2, 18, { align: 'center' });
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+        doc.text('Booking Receipt — Confirmed', W / 2, 30, { align: 'center' });
+        doc.setFontSize(9); doc.setTextColor(180, 180, 200);
+        doc.text('afristay.rw', W / 2, 38, { align: 'center' });
+
+        y = 58;
+
+        // ── Receipt number row ──
+        doc.setFillColor(248, 249, 250);
+        doc.roundedRect(M, y - 6, W - M * 2, 16, 3, 3, 'F');
+        doc.setTextColor(80, 80, 80); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+        doc.text('RECEIPT NO', M + 6, y + 3);
+        doc.setTextColor(30, 30, 30); doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+        doc.text(receiptNo, M + 6, y + 8);
+        doc.setTextColor(80, 80, 80); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+        doc.text('ISSUED', W - M - 6, y + 3, { align: 'right' });
+        doc.setTextColor(30, 30, 30); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text(issuedDate, W - M - 6, y + 8, { align: 'right' });
+
+        y += 26;
+
+        // ── Section heading helper ──
+        const sectionHead = (title) => {
+            doc.setFillColor(235, 103, 83);
+            doc.rect(M, y, 3, 6, 'F');
+            doc.setTextColor(30, 30, 30); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+            doc.text(title, M + 7, y + 5);
+            y += 12;
+        };
+
+        // ── Row helper ──
+        const row = (label, value, highlight = false) => {
+            doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+            doc.setTextColor(140, 140, 140);
+            doc.text(label, M, y);
+            doc.setTextColor(highlight ? 235 : 30, highlight ? 103 : 30, highlight ? 83 : 30);
+            doc.setFont('helvetica', highlight ? 'bold' : 'normal');
+            doc.setFontSize(highlight ? 12 : 10);
+            doc.text(value, W - M, y, { align: 'right' });
+            y += 8;
+            // thin line
+            doc.setDrawColor(240, 240, 240);
+            doc.line(M, y - 1, W - M, y - 1);
+            y += 2;
+        };
+
+        // ── Property ──
+        sectionHead('PROPERTY');
+        doc.setTextColor(20, 20, 20); doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+        doc.text(listing?.title || '—', M, y); y += 7;
+        doc.setTextColor(100, 100, 100); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+        doc.text('📍 ' + locationStr, M, y); y += 14;
+
+        // ── Booking details ──
+        sectionHead('BOOKING DETAILS');
+        row('Check-in',      fmt(booking.start_date));
+        row('Check-out',     fmt(booking.end_date));
+        row('Duration',      nights + ' night' + (nights !== 1 ? 's' : ''));
+        row('Status',        '✓ Confirmed');
+        y += 4;
+
+        // ── Payment ──
+        sectionHead('PAYMENT');
+        row('Rate per Night',  pricePerNight + ' ' + currency);
+        row('Payment Method',  payMethod);
+        y += 2;
+
+        // Total box
+        doc.setFillColor(255, 249, 248);
+        doc.roundedRect(M, y, W - M * 2, 16, 3, 3, 'F');
+        doc.setDrawColor(235, 103, 83);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(M, y, W - M * 2, 16, 3, 3, 'S');
+        doc.setTextColor(30, 30, 30); doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+        doc.text('TOTAL', M + 6, y + 10);
+        doc.setTextColor(235, 103, 83); doc.setFontSize(15);
+        doc.text(totalFmt, W - M - 6, y + 10, { align: 'right' });
+        y += 26;
+
+        // ── Guest ──
+        sectionHead('GUEST');
+        doc.setTextColor(30, 30, 30); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text(booker?.full_name || '—', M, y); y += 6;
+        doc.setTextColor(100, 100, 100); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+        if (booker?.email) { doc.text(booker.email, M, y); y += 6; }
+        y += 6;
+
+        // ── Owner / Host ──
+        if (owner) {
+            sectionHead('HOST CONTACT');
+            doc.setTextColor(30, 30, 30); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+            doc.text(owner.full_name || '—', M, y); y += 6;
+            doc.setTextColor(100, 100, 100); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+            if (owner.email) { doc.text(owner.email, M, y); y += 6; }
+            if (owner.phone) { doc.text(owner.phone, M, y); y += 6; }
+            y += 4;
+        }
+
+        // ── Footer ──
+        const pageH = doc.internal.pageSize.height;
+        doc.setFillColor(248, 249, 250);
+        doc.rect(0, pageH - 18, W, 18, 'F');
+        doc.setDrawColor(235, 235, 235);
+        doc.line(0, pageH - 18, W, pageH - 18);
+        doc.setTextColor(160, 160, 160); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+        doc.text('This is an official AfriStay booking receipt. © ' + new Date().getFullYear() + ' AfriStay · afristay.rw', W / 2, pageH - 8, { align: 'center' });
+
+        doc.save('AfriStay-Receipt-' + receiptNo + '.pdf');
+        toast('📄 Receipt downloaded!', 'success');
+        console.log('✅ [RECEIPT] PDF generated:', receiptNo);
+
+    } catch (err) {
+        console.error('❌ [RECEIPT] Error generating receipt:', err);
+        toast('Failed to generate receipt: ' + err.message, 'error');
+    }
+};

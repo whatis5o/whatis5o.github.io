@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events — AfriStay</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Oleo+Script+Swash+Caps:wght@400;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/Style/style.css">
+    <style>
+        :root { --primary: #EB6753; --dark: #1a2f1e; }
+        body { background: #f5f5f5; }
+
+        /* ── HERO ── */
+        .events-hero {
+            height: 50vh; min-height: 320px;
+            background: linear-gradient(160deg, rgba(235,103,83,0.6) 0%, rgba(26,47,30,0.92) 100%),
+                        url('/Pictures/Rwanda_3.jpg') center / cover no-repeat fixed;
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; color: #fff; position: relative;
+        }
+        .events-hero::after {
+            content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+            height: 70px; background: linear-gradient(to top, #f5f5f5, transparent);
+        }
+        .hero-inner { z-index: 2; padding: 0 20px; }
+        .hero-inner h1 { font-size: clamp(2rem,5vw,3.2rem); font-weight: 800; margin: 0 0 10px; }
+        .hero-inner p  { font-size: clamp(0.9rem,1.8vw,1.1rem); color: rgba(255,255,255,0.82); margin: 0; }
+
+        /* ── FILTERS ── */
+        .filters-wrap {
+            max-width: 1240px; margin: -22px auto 0; padding: 0 24px;
+            position: relative; z-index: 10;
+        }
+        .filters-box {
+            background: #fff; border-radius: 16px;
+            box-shadow: 0 8px 36px rgba(0,0,0,0.11);
+            padding: 20px 24px;
+            display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
+        }
+        .fg { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 150px; }
+        .fg label { font-size: 11px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: .5px; }
+        .fg input, .fg select {
+            padding: 10px 13px; border: 1.5px solid #ebebeb; border-radius: 10px;
+            font-size: 14px; font-family: Inter, sans-serif; background: #fff;
+            outline: none; transition: border-color .2s;
+        }
+        .fg input:focus, .fg select:focus { border-color: var(--primary); }
+        .search-btn {
+            background: var(--primary); color: #fff; border: none;
+            padding: 11px 26px; border-radius: 10px; font-weight: 700; font-size: 14px;
+            cursor: pointer; font-family: Inter, sans-serif; white-space: nowrap;
+            align-self: flex-end; transition: opacity .2s;
+        }
+        .search-btn:hover { opacity: .88; }
+
+        /* ── GRID ── */
+        .events-section { max-width: 1240px; margin: 0 auto; padding: 52px 24px 90px; }
+        .results-line { font-size: 13px; color: #aaa; margin-bottom: 22px; }
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px,1fr));
+            gap: 28px;
+        }
+
+        /* ── CARD ── */
+        .ev-card {
+            background: #fff; border-radius: 20px; overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            transition: transform .25s, box-shadow .25s;
+            text-decoration: none; color: inherit;
+            display: flex; flex-direction: column;
+        }
+        .ev-card:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(0,0,0,0.14); }
+        .ev-img { height: 220px; overflow: hidden; background: #f0f0f0; position: relative; flex-shrink: 0; }
+        .ev-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s; }
+        .ev-card:hover .ev-img img { transform: scale(1.06); }
+        .ev-no-img { width:100%;height:100%;display:flex;align-items:center;justify-content:center; }
+        .ev-date-badge {
+            position: absolute; top: 14px; left: 14px;
+            background: rgba(235,103,83,.92); backdrop-filter: blur(6px);
+            color: #fff; padding: 5px 12px; border-radius: 20px;
+            font-size: 12px; font-weight: 700;
+        }
+        .ev-body { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 7px; }
+        .ev-title { font-size: 17px; font-weight: 800; color: #1a1a1a; margin: 0; line-height: 1.3; }
+        .ev-loc { font-size: 13px; color: #888; display: flex; align-items: center; gap: 5px; margin: 0; }
+        .ev-loc i { color: var(--primary); flex-shrink: 0; }
+        .ev-desc { font-size: 13px; color: #aaa; margin: 0; flex: 1;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .ev-footer { display: flex; justify-content: flex-end; padding-top: 12px; border-top: 1px solid #f5f5f5; margin-top: auto; }
+        .ev-btn {
+            background: var(--primary); color: #fff; border: none;
+            padding: 9px 20px; border-radius: 20px; font-size: 13px; font-weight: 600;
+            cursor: pointer; font-family: Inter, sans-serif; transition: opacity .2s;
+            text-decoration: none; display: inline-block;
+        }
+        .ev-btn:hover { opacity: .85; }
+
+        /* ── STATE BOX ── */
+        .state-box { grid-column: 1/-1; text-align: center; padding: 80px 20px; color: #ccc; }
+        .state-box i { font-size: 54px; display: block; margin-bottom: 14px; }
+        .state-box p { font-size: 15px; }
+
+        @media(max-width:768px){
+            .filters-box { flex-direction:column; }
+            .fg { min-width:100%; }
+            .search-btn { width:100%; text-align:center; }
+        }
+    </style>
+</head>
+<body>
+
+<nav id="navbar">
+    <div class="logo-area"><a href="/"><h1>AfriStay</h1></a></div>
+    <div class="nav-wrapper" id="navWrapper">
+        <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
+        <div class="nav-center">
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/Listings">Listings</a></li>
+                <li><a href="/Events" class="active">Events</a></li>
+                <li><a href="/About">About</a></li>
+                <li><a href="/Contact">Contact</a></li>
+            </ul>
+        </div>
+        <div class="nav-right">
+            <a href="/Favorites" class="icon-link"><i class="fa-regular fa-heart"></i></a>
+            <a href="/Auth" id="auth-btn" class="signin-btn">Sign In</a>
+        </div>
+    </div>
+    <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
+</nav>
+
+<!-- HERO -->
+<section class="events-hero">
+    <div class="hero-inner">
+        <h1>Upcoming Events</h1>
+        <p>Festivals, culture, and experiences across the Land of a Thousand Hills</p>
+    </div>
+</section>
+
+<!-- FILTERS -->
+<div class="filters-wrap">
+    <div class="filters-box">
+        <div class="fg" style="flex:2;min-width:200px;">
+            <label><i class="fa-solid fa-magnifying-glass"></i> Search</label>
+            <input id="fSearch" type="text" placeholder="Search events...">
+        </div>
+        <div class="fg">
+            <label>Province</label>
+            <select id="fProvince"><option value="">All Provinces</option></select>
+        </div>
+        <div class="fg">
+            <label>District</label>
+            <select id="fDistrict"><option value="">All Districts</option></select>
+        </div>
+        <div class="fg">
+            <label>Month</label>
+            <select id="fMonth">
+                <option value="">Any time</option>
+                <option value="01">January</option><option value="02">February</option>
+                <option value="03">March</option><option value="04">April</option>
+                <option value="05">May</option><option value="06">June</option>
+                <option value="07">July</option><option value="08">August</option>
+                <option value="09">September</option><option value="10">October</option>
+                <option value="11">November</option><option value="12">December</option>
+            </select>
+        </div>
+        <button class="search-btn" onclick="loadEvents()"><i class="fa-solid fa-search"></i> Search</button>
+    </div>
+</div>
+
+<!-- GRID -->
+<section class="events-section">
+    <p class="results-line" id="resultsLine"></p>
+    <div class="events-grid" id="eventsGrid">
+        <div class="state-box"><i class="fa-solid fa-spinner fa-spin"></i><p>Loading events...</p></div>
+    </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/config.js"></script>
+<script>
+const _sb = window.supabaseClient;
+
+function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function boot() {
+    if (!_sb) return;
+    // Load provinces
+    const { data: provs } = await _sb.from('provinces').select('id,name').order('name');
+    const pSel = document.getElementById('fProvince');
+    (provs||[]).forEach(p => { const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; pSel.appendChild(o); });
+
+    // Live search on type
+    document.getElementById('fSearch').addEventListener('input', debounce(loadEvents, 300));
+    document.getElementById('fProvince').addEventListener('change', async () => { await loadDistricts(); loadEvents(); });
+    document.getElementById('fDistrict').addEventListener('change', loadEvents);
+    document.getElementById('fMonth').addEventListener('change', loadEvents);
+
+    await loadEvents();
+}
+
+async function loadDistricts() {
+    const provId = document.getElementById('fProvince').value;
+    const dSel = document.getElementById('fDistrict');
+    dSel.innerHTML = '<option value="">All Districts</option>';
+    if (!provId || !_sb) return;
+    const { data } = await _sb.from('districts').select('id,name').eq('province_id', provId).order('name');
+    (data||[]).forEach(d => { const o=document.createElement('option'); o.value=d.id; o.textContent=d.name; dSel.appendChild(o); });
+}
+
+async function loadEvents() {
+    const grid    = document.getElementById('eventsGrid');
+    const resLine = document.getElementById('resultsLine');
+    if (!_sb) { grid.innerHTML = '<div class="state-box"><i class="fa-solid fa-wifi-slash"></i><p>Not connected</p></div>'; return; }
+
+    const q     = (document.getElementById('fSearch')?.value || '').trim();
+    const prov  = document.getElementById('fProvince')?.value || '';
+    const dist  = document.getElementById('fDistrict')?.value || '';
+    const month = document.getElementById('fMonth')?.value || '';
+
+    grid.innerHTML = '<div class="state-box"><i class="fa-solid fa-spinner fa-spin"></i><p>Loading...</p></div>';
+
+    let query = _sb.from('events')
+        .select('id,title,description,images,location_label,landmark,start_date,end_date,province_id,district_id')
+        .order('start_date', { ascending: true });
+
+    if (q)    query = query.ilike('title', `%${q}%`);
+    if (prov) query = query.eq('province_id', prov);
+    if (dist) query = query.eq('district_id', dist);
+    if (month) {
+        const yr = new Date().getFullYear();
+        query = query.gte('start_date', `${yr}-${month}-01`).lte('start_date', `${yr}-${month}-31`);
+    }
+
+    const { data, error } = await query.limit(60);
+
+    if (error || !data?.length) {
+        grid.innerHTML = '<div class="state-box"><i class="fa-regular fa-calendar-xmark"></i><p>' + (error ? esc(error.message) : 'No events found. Check back soon!') + '</p></div>';
+        if (resLine) resLine.textContent = '';
+        return;
+    }
+
+    if (resLine) resLine.textContent = data.length + ' event' + (data.length===1?'':'s') + ' found';
+    grid.innerHTML = '';
+
+    data.forEach(ev => {
+        const img     = ev.images?.[0] || null;
+        const sDate   = ev.start_date;
+        const eDate   = ev.end_date;
+        const fmtDate = d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+        const dateStr = sDate
+            ? (eDate && eDate !== sDate ? fmtDate(sDate) + ' – ' + fmtDate(eDate) : fmtDate(sDate))
+            : '—';
+        const locStr  = [ev.location_label, ev.landmark].filter(Boolean).join(' · ');
+
+        const a = document.createElement('a');
+        a.className = 'ev-card';
+        a.href = '/Event/?id=' + ev.id;
+        a.innerHTML =
+            '<div class="ev-img">' +
+            (img ? `<img src="${esc(img)}" alt="${esc(ev.title)}" loading="lazy">` : '<div class="ev-no-img"><i class="fa-regular fa-calendar" style="font-size:40px;color:#ddd;"></i></div>') +
+            `<div class="ev-date-badge"><i class="fa-regular fa-calendar"></i> ${dateStr}</div>` +
+            '</div>' +
+            '<div class="ev-body">' +
+            `<h3 class="ev-title">${esc(ev.title)}</h3>` +
+            (locStr ? `<p class="ev-loc"><i class="fa-solid fa-location-dot"></i>${esc(locStr)}</p>` : '') +
+            (ev.description ? `<p class="ev-desc">${esc(ev.description)}</p>` : '') +
+            `<div class="ev-footer"><a class="ev-btn" href="/Event/?id=${ev.id}">View Event</a></div>` +
+            '</div>';
+        grid.appendChild(a);
+    });
+}
+
+function debounce(fn, ms){ let t; return function(...a){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a),ms); }; }
+
+function toggleMenu() {
+    document.getElementById('navWrapper')?.classList.toggle('active');
+}
+
+document.addEventListener('DOMContentLoaded', boot);
+</script>
+</body>
+</html>
