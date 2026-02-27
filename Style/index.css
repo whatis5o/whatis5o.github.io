@@ -682,9 +682,9 @@ body{
 .main-footer {
     background: var(--green-dark);
     color: white;
-    padding-top: 10px;
+    padding-top: 20px;
     position: relative;
-    margin-top: 0px;
+    margin-top: 10px;
 }
 
 /* CTA Banner (overlaps footer) */

@@ -11,28 +11,27 @@
     <link rel="stylesheet" href="/Style/contact.css">
 </head>
 <body>
-        <nav id="navbar">
-            <div class="logo-area">
-                <a href="/"><h1>AfriStay</h1></a>
+    <nav id="navbar">
+        <div class="logo-area">
+            <a href="/"><h1>AfriStay</h1></a>
+        </div>
+        <div class="nav-wrapper" id="navWrapper">
+            <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
+            <div class="nav-center">
+                <ul class="nav-links">
+                    <li><a href="/index.html">Home</a></li>
+                    <li><a href="/Listings">Listings</a></li>
+                    <li><a href="/About">About</a></li>
+                    <li><a href="/Contact" class = "active">Contact</a></li>
+                </ul>
             </div>
-    
-            <div class="nav-wrapper" id="navWrapper">
-                <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
-                <div class="nav-center">
-                    <ul class="nav-links">
-                        <li><a href="/index.html">Home</a></li>
-                        <li><a href="/Listings">Listings</a></li>
-                        <li><a href="/About">About</a></li>
-                        <li><a href="/Contact" class = "active">Contact</a></li>
-                    </ul>
-                </div>
-                <div class="nav-right">
-                    <a href="/Favorites" class="icon-link"><i class="fa-regular fa-heart"></i></a>
-                    <a href="/Auth" id="auth-btn" class="signin-btn">Sign In</a> 
-                </div>
+            <div class="nav-right">
+                <a href="/Favorites" class="icon-link"><i class="fa-regular fa-heart"></i></a>
+                <a href="/Auth" id="auth-btn" class="signin-btn">Sign In</a> 
             </div>
-            <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
-        </nav>
+        </div>
+        <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
+    </nav>
 
     <div class="box">
         <div class="box-left">
@@ -42,7 +41,6 @@
             </div>
             <i class="fa-solid fa-envelope big-mail-icon"></i>
         </div>
-
         <div class="box-right">
             <h1 class="orange desktop-touch">touch</h1>
             <form id="contactForm">
@@ -53,6 +51,81 @@
             </form>
         </div>
     </div>
+
+        <!-- ── FOOTER ── -->
+        <footer class="main-footer">
+            <!-- CTA Banner -->
+            <div class="footer-cta">
+                <div class="cta-content">
+                    <h2>Ready to Experience Rwanda?</h2>
+                    <p>Find your perfect stay or vehicle today and start your authentic Rwandan adventure.</p>
+                </div>
+                <div class="cta-actions">
+                    <a href="#" class="cta-btn">Start Exploring</a>
+                    <div class="cta-phone">
+                        <span>Call us anytime</span>
+                        <strong>+250 788 123 456</strong>
+                    </div>
+                </div>
+            </div>
+            <!-- Main Footer Content -->
+            <div class="footer-content">
+                <div class="footer-grid">
+                    <!-- Brand Column -->
+                    <div class="footer-brand">
+                        <h2>AfriStay</h2>
+                        <p>Your trusted platform for authentic stays and seamless travel experiences across Rwanda's most beautiful destinations.</p>
+                        <div class="social-links">
+                            <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+                            <a href="#" aria-label="Twitter"><i class="fa-brands fa-twitter"></i></a>
+                            <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                            <a href="#" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+                        </div>
+                    </div>
+                    <!-- Quick Links -->
+                    <div class="footer-column">
+                        <h4>Quick Links</h4>
+                        <ul>
+                            <li><a href="/">Home</a></li>
+                            <li><a href="/Listings">Listings</a></li>
+                            <li><a href="/About">About </a></li>
+                            <li><a href="/Contact">Contact</a></li>
+                        </ul>
+                    </div>
+                    <!-- Services -->
+                    <div class="footer-column">
+                        <h4>Services</h4>
+                        <ul>
+                            <li><a href="#">Property Rentals</a></li>
+                            <li><a href="#">Vehicle Hire</a></li>
+                            <li><a href="#">Travel Planning</a></li>
+                        </ul>
+                    </div>
+                    <!-- Newsletter -->
+                    <div class="footer-column">
+                        <h4>Stay Updated</h4>
+                        <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.9rem; line-height: 1.6; margin-bottom: 15px;">Subscribe to get special offers and travel tips.</p>
+                        <div class="newsletter-form">
+                            <div class="newsletter-input">
+                                <input type="email" placeholder="Your email address" required>
+                                <button type="submit">Subscribe</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Footer Bottom -->
+            <div class="footer-bottom">
+                <div class="footer-bottom-content">
+                    <p class="copyright">&copy; 2024 AfriStay. All rights reserved. Made with care in Rwanda.</p>
+                    <div class="footer-bottom-links">
+                        <a href="#">Privacy Policy</a>
+                        <a href="#">Terms of Service</a>
+                        <a href="#">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/js/config.js"></script>
