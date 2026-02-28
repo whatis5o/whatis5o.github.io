@@ -96,6 +96,23 @@ function generateListingCard(listing, locationName) {
 /* ─────────────────────────────────────────
    SHARED LISTING FETCH + RENDER ENGINE
    ───────────────────────────────────────── */
+
+/* ─── Lightweight location name cache (5 min TTL) ─── */
+const _locCache = { _s: {}, _t: {},
+    set(k,v){ this._s[k]=v; this._t[k]=Date.now()+300000; },
+    get(k){ if(!this._s[k]||Date.now()>this._t[k]){delete this._s[k];return null;} return this._s[k]; }
+};
+async function _cacheLocNames(sb, pvIds, dtIds) {
+    const pvMap = {}, dtMap = {};
+    const pvMiss = pvIds.filter(id => !_locCache.get('pv_'+id));
+    const dtMiss = dtIds.filter(id => !_locCache.get('dt_'+id));
+    if (pvMiss.length) { const {data:ps}=await sb.from('provinces').select('id,name').in('id',pvMiss); (ps||[]).forEach(p=>{_locCache.set('pv_'+p.id,p.name);}); }
+    if (dtMiss.length) { const {data:ds}=await sb.from('districts').select('id,name').in('id',dtMiss); (ds||[]).forEach(d=>{_locCache.set('dt_'+d.id,d.name);}); }
+    pvIds.forEach(id=>pvMap[id]=_locCache.get('pv_'+id)||'');
+    dtIds.forEach(id=>dtMap[id]=_locCache.get('dt_'+id)||'');
+    return { pvMap, dtMap };
+}
+
 window.fetchAndRenderSharedListings = async function(options) {
     const sb        = window.supabaseClient;
     const container = document.getElementById(options.containerId);
@@ -107,7 +124,8 @@ window.fetchAndRenderSharedListings = async function(options) {
         .select(`id, title, price, currency, availability_status, status,
                  category_slug, province_id, district_id, created_at,
                  listing_images ( image_url )`)
-        .eq('status', 'approved');
+        .eq('status', 'approved')
+        .eq('availability_status', 'available'); // only bookable listings on public pages
 
     if (options.featuredOnly) q = q.eq('featured', true);
     if (options.qtext)        q = q.ilike('title', `%${options.qtext}%`);
@@ -131,9 +149,7 @@ window.fetchAndRenderSharedListings = async function(options) {
 
     const pvIds = [...new Set(listings.map(l => l.province_id).filter(Boolean))];
     const dtIds = [...new Set(listings.map(l => l.district_id).filter(Boolean))];
-    const pvMap = {}, dtMap = {};
-    if (pvIds.length) { const { data: ps } = await sb.from('provinces').select('id,name').in('id', pvIds); (ps||[]).forEach(p => pvMap[p.id] = p.name); }
-    if (dtIds.length) { const { data: ds } = await sb.from('districts').select('id,name').in('id', dtIds); (ds||[]).forEach(d => dtMap[d.id] = d.name); }
+    const { pvMap, dtMap } = await _cacheLocNames(sb, pvIds, dtIds); // cached 5 min
 
     // Fetch active promotions for these listings
     const listingIds = listings.map(l => l.id);

@@ -75,6 +75,7 @@ async function loadFeaturedListings() {
         .select('id, title, price, currency, availability_status, category_slug, province_id, district_id, created_at')
         .eq('featured', true)
         .eq('status', 'approved')
+        .eq('availability_status', 'available')
         .order('created_at', { ascending: false })
         .limit(6);
 
@@ -106,8 +107,14 @@ async function loadFeaturedListings() {
     const pvIds = [...new Set(listings.map(l => l.province_id).filter(Boolean))];
     const dtIds = [...new Set(listings.map(l => l.district_id).filter(Boolean))];
     const pvMap = {}, dtMap = {};
-    if (pvIds.length) { const { data: ps } = await sb.from('provinces').select('id,name').in('id', pvIds); (ps||[]).forEach(p => pvMap[p.id] = p.name); }
-    if (dtIds.length) { const { data: ds } = await sb.from('districts').select('id,name').in('id', dtIds); (ds||[]).forEach(d => dtMap[d.id] = d.name); }
+    // Location names — re-use _locCache from script.js if available, else fetch directly
+    if (typeof _cacheLocNames === 'function') {
+        const r = await _cacheLocNames(sb, pvIds, dtIds);
+        Object.assign(pvMap, r.pvMap); Object.assign(dtMap, r.dtMap);
+    } else {
+        if (pvIds.length) { const { data: ps } = await sb.from('provinces').select('id,name').in('id', pvIds); (ps||[]).forEach(p => pvMap[p.id] = p.name); }
+        if (dtIds.length) { const { data: ds } = await sb.from('districts').select('id,name').in('id', dtIds); (ds||[]).forEach(d => dtMap[d.id] = d.name); }
+    }
 
     renderCards(listings, imgMap, dtMap, pvMap, promoMap);
 }

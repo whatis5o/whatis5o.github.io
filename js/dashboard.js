@@ -27,6 +27,65 @@ const EMAILJS_CONFIG = {
 
 console.log("🎯 [ADMIN] Demo mode:", DEMO_MODE ? "ENABLED" : "DISABLED");
 
+/* ═══════════════════════════════════════════════════
+   CLIENT-SIDE CACHE  ← reduces redundant DB calls
+   Key structure:  'table:queryHash'
+   Default TTL:    60s  (override per call)
+   ═══════════════════════════════════════════════════ */
+const _cache = {
+    _store: Object.create(null),
+    _ttl:   Object.create(null),
+    set(key, val, ms = 60000) { this._store[key] = val; this._ttl[key] = Date.now() + ms; },
+    get(key) {
+        if (!(key in this._store)) return null;
+        if (Date.now() > this._ttl[key]) { delete this._store[key]; delete this._ttl[key]; return null; }
+        return this._store[key];
+    },
+    del(key)   { delete this._store[key]; delete this._ttl[key]; },
+    bust(pfx)  { Object.keys(this._store).filter(k => k.startsWith(pfx)).forEach(k => this.del(k)); }
+};
+
+/* Cached province list  — 5 min TTL */
+async function cProvinces() {
+    const hit = _cache.get('prov'); if (hit) return hit;
+    const { data } = await _supabase.from('provinces').select('id,name').order('name');
+    _cache.set('prov', data || [], 300000); return data || [];
+}
+/* Cached districts for a province — 5 min TTL */
+async function cDistricts(provId) {
+    const k = 'dist_' + provId; const hit = _cache.get(k); if (hit) return hit;
+    const { data } = await _supabase.from('districts').select('id,name').eq('province_id', provId).order('name');
+    _cache.set(k, data || [], 300000); return data || [];
+}
+/* Cached sectors for a district — 5 min TTL */
+async function cSectors(distId) {
+    const k = 'sect_' + distId; const hit = _cache.get(k); if (hit) return hit;
+    const { data } = await _supabase.from('sectors').select('id,name').eq('district_id', distId).order('name');
+    _cache.set(k, data || [], 300000); return data || [];
+}
+/* First image per listing — 2 min TTL (batch) */
+async function cImageMap(ids) {
+    if (!ids.length) return {};
+    const key = 'imgs_' + ids.slice().sort().join('|').slice(0,80);
+    const hit = _cache.get(key); if (hit) return hit;
+    const { data } = await _supabase.from('listing_images').select('listing_id,image_url').in('listing_id', ids);
+    const map = {};
+    (data||[]).forEach(r => { if (!map[r.listing_id]) map[r.listing_id] = r.image_url; });
+    _cache.set(key, map, 120000); return map;
+}
+/* Owner listing IDs — 30 s TTL */
+async function cOwnerIds() {
+    if (!CURRENT_PROFILE) return [];
+    const k = 'ownIds_' + CURRENT_PROFILE.id; const hit = _cache.get(k); if (hit) return hit;
+    const ids = await fetchOwnerListingIds();
+    _cache.set(k, ids, 30000); return ids;
+}
+/* Invalidate all listing-related caches (after create/approve/delete) */
+function bustListingCache() {
+    _cache.bust('imgs_'); _cache.bust('ownIds_'); _cache.del('pendingCount');
+}
+
+
 // Get Supabase client from window (created by config.js)
 let _supabase = null;
 
@@ -858,11 +917,9 @@ async function loadListingsGrid(filters = {}) {
     if (error) { container.innerHTML = `<div style="padding:20px;color:red">Error: ${error.message}</div>`; return; }
     if (!data || data.length === 0) { container.innerHTML = '<div style="padding:20px">No listings match.</div>'; return; }
 
-    // Batch-fetch first image per listing
+    // Batch-fetch first image per listing (cached 2 min)
     const listingIds = data.map(l => l.id);
-    const { data: allImages } = await _supabase.from('listing_images').select('listing_id,image_url').in('listing_id', listingIds);
-    const imageMap = {};
-    (allImages || []).forEach(img => { if (!imageMap[img.listing_id]) imageMap[img.listing_id] = img.image_url; });
+    const imageMap = await cImageMap(listingIds);
 
     // Fetch owner names
     const ownerIds = [...new Set(data.map(l => l.owner_id).filter(Boolean))];
@@ -881,7 +938,7 @@ async function loadListingsGrid(filters = {}) {
         card.className = 'listing-card';
         card.style.cssText = 'background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;flex-direction:column;';
         card.innerHTML = `
-            <a href="detail.html?id=${l.id}" style="text-decoration:none;color:inherit;display:block;">
+            <a href="/Detail/?id=${l.id}" style="text-decoration:none;color:inherit;display:block;">
                 <div style="height:180px;background:#f0f0f0;overflow:hidden;position:relative;">
                     ${thumb
                         ? `<img src="${thumb}" alt="${escapeHtml(l.title)}" style="width:100%;height:100%;object-fit:cover;">`
@@ -891,7 +948,7 @@ async function loadListingsGrid(filters = {}) {
                 </div>
             </a>
             <div style="padding:14px;flex:1;display:flex;flex-direction:column;gap:6px;">
-                <a href="detail.html?id=${l.id}" style="text-decoration:none;"><h4 style="margin:0;font-size:15px;font-weight:600;color:#222;">${escapeHtml(l.title)}</h4></a>
+                <a href="/Detail/?id=${l.id}" style="text-decoration:none;"><h4 style="margin:0;font-size:15px;font-weight:600;color:#222;">${escapeHtml(l.title)}</h4></a>
                 <p style="margin:0;color:#888;font-size:13px;">${l.category_slug || ''} • ${ownerMap[l.owner_id] || 'Unknown'}</p>
                 <p style="margin:0;color:var(--primary,#EB6753);font-weight:700;font-size:14px;">${Number(l.price).toLocaleString()} ${l.currency || 'RWF'}</p>
                 <div style="display:flex;gap:8px;margin-top:auto;padding-top:10px;flex-wrap:wrap;">
@@ -929,6 +986,10 @@ async function loadAllCountsAndTables() {
     // Admin: inject listing-requests tab
     if (CURRENT_ROLE === 'admin') {
         loadListingRequests();
+    }
+    // Admin & Owner: pending listings widget in dashboard tab
+    if (CURRENT_ROLE === 'admin' || CURRENT_ROLE === 'owner') {
+        loadDashPendingListings();
     }
     console.log("✅ [DATA] All data loaded");
 }
@@ -2550,7 +2611,8 @@ async function approveListingRequest(listingId, btn) {
         const { error } = await _supabase.from('listings').update({ status: 'approved' }).eq('id', listingId);
         if (error) throw error;
         toast('Listing approved — it is now live!', 'success');
-        await loadListingRequests();
+        bustListingCache();
+        await Promise.all([loadListingRequests(), loadDashPendingListings()]);
     } catch (err) {
         toast('Failed: ' + err.message, 'error');
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Approve'; }
@@ -2565,7 +2627,8 @@ async function rejectListingRequest(listingId, btn) {
         const { error } = await _supabase.from('listings').delete().eq('id', listingId);
         if (error) throw error;
         toast('Listing request rejected.', 'warning');
-        await loadListingRequests();
+        bustListingCache();
+        await Promise.all([loadListingRequests(), loadDashPendingListings()]);
     } catch (err) {
         toast('Failed: ' + err.message, 'error');
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-xmark"></i> Reject'; }
@@ -2583,7 +2646,7 @@ async function loadNewBookings() {
     container.innerHTML = '<div style="text-align:center;padding:30px;color:#aaa;">Loading...</div>';
 
     try {
-        const listingIds = await fetchOwnerListingIds();
+        const listingIds = await cOwnerIds();
         if (!listingIds.length) {
             container.innerHTML = '<div style="text-align:center;padding:40px;color:#ccc;"><i class="fa-solid fa-inbox" style="font-size:36px;display:block;margin-bottom:12px;"></i><p>No listings yet.</p></div>';
             return;
@@ -2643,6 +2706,171 @@ window.loadPromotionsTable = loadPromotionsCards;
 window.loadPromotionsCards = loadPromotionsCards;
 window.handleCreatePromo = handleCreatePromo;
 window.handleSaveSettings = handleSaveSettings;
+
+
+/* ═══════════════════════════════════════════════════
+   DASHBOARD PANEL — "New Listings" pending-approval widget
+   Replaces old "Recent Bookings" section.
+   Admin  → sees ALL pending listings with approve/reject
+   Owner  → sees THEIR pending listings (status-only view)
+   ═══════════════════════════════════════════════════ */
+async function loadDashPendingListings() {
+    // Find or create the container inside dashboardPanel
+    let el = document.getElementById('dashPendingListings');
+    if (!el) {
+        const panel = document.getElementById('dashboardPanel');
+        if (!panel) return;
+
+        // Remove old newBookingsContainer section if present
+        const old = panel.querySelector('[id="newBookingsContainer"], .new-bookings-section');
+        if (old) old.closest('.data-section, [class*=section]')?.remove?.() || old.remove();
+
+        // Build wrapper
+        const wrap = document.createElement('div');
+        wrap.className = 'data-section';
+        wrap.style.marginTop = '20px';
+        wrap.innerHTML =
+            '<div class="section-header">' +
+            '<h2><i class="fa-solid fa-list-check" style="margin-right:8px;color:#EB6753;"></i>New Listings</h2>' +
+            '<span id="dashPendingBadge" style="background:#f39c12;color:#fff;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;display:none;"></span>' +
+            '</div>' +
+            '<p style="font-size:13px;color:#aaa;margin:-8px 0 16px;">Listings waiting for approval</p>' +
+            '<div id="dashPendingListings"></div>';
+        panel.appendChild(wrap);
+        el = document.getElementById('dashPendingListings');
+    }
+    if (!el) return;
+
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:#bbb;">Loading...</div>';
+
+    try {
+        let q = _supabase
+            .from('listings')
+            .select('id,title,price,currency,category_slug,province_id,district_id,owner_id,created_at')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(15);
+
+        if (CURRENT_ROLE === 'owner') q = q.eq('owner_id', CURRENT_PROFILE.id);
+
+        const { data, error } = await q;
+        if (error) throw error;
+
+        // Update badge
+        const badge = document.getElementById('dashPendingBadge');
+        if (badge) {
+            badge.textContent = (data?.length || 0) + ' pending';
+            badge.style.display = data?.length ? 'inline-block' : 'none';
+        }
+
+        if (!data || !data.length) {
+            el.innerHTML =
+                '<div style="text-align:center;padding:40px;color:#ccc;">' +
+                '<i class="fa-solid fa-circle-check" style="font-size:38px;color:#2ecc71;display:block;margin-bottom:12px;"></i>' +
+                '<p>No listings waiting for approval.</p></div>';
+            return;
+        }
+
+        // Batch image + owner info + locations
+        const ids = data.map(l => l.id);
+        const imgMap = await cImageMap(ids);
+
+        const ownerIds = [...new Set(data.map(l => l.owner_id).filter(Boolean))];
+        const ownerMap = {};
+        if (ownerIds.length) {
+            const { data: ows } = await _supabase.from('profiles').select('id,full_name,email,phone').in('id', ownerIds);
+            (ows||[]).forEach(o => ownerMap[o.id] = o);
+        }
+
+        const pvIds = [...new Set(data.map(l => l.province_id).filter(Boolean))];
+        const dtIds = [...new Set(data.map(l => l.district_id).filter(Boolean))];
+        const pvMap = {}, dtMap = {};
+        if (pvIds.length) { const {data:ps} = await _supabase.from('provinces').select('id,name').in('id',pvIds); (ps||[]).forEach(p=>pvMap[p.id]=p.name); }
+        if (dtIds.length) { const {data:ds} = await _supabase.from('districts').select('id,name').in('id',dtIds); (ds||[]).forEach(d=>dtMap[d.id]=d.name); }
+
+        el.innerHTML = '';
+        data.forEach(l => {
+            const img   = imgMap[l.id] || null;
+            const owner = ownerMap[l.owner_id] || {};
+            const loc   = [dtMap[l.district_id], pvMap[l.province_id]].filter(Boolean).join(', ') || 'Rwanda';
+            const unit  = l.category_slug === 'vehicle' ? '/day' : '/night';
+            const priceFmt = Number(l.price||0).toLocaleString('en-RW');
+
+            const row = document.createElement('div');
+            row.id = 'dplRow_' + l.id;
+            row.style.cssText = 'display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #f5f5f5;align-items:center;flex-wrap:wrap;transition:opacity 0.3s;';
+            row.innerHTML =
+                // Thumbnail → links to preview
+                '<a href="/Detail/?id=' + l.id + '&preview=1" target="_blank" style="flex-shrink:0;width:76px;height:62px;border-radius:12px;overflow:hidden;background:#f0f0f0;display:flex;align-items:center;justify-content:center;text-decoration:none;">' +
+                (img ? '<img src="' + escapeHtml(img) + '" style="width:100%;height:100%;object-fit:cover;">' : '<i class="fa-solid fa-image" style="color:#ddd;font-size:20px;"></i>') +
+                '</a>' +
+                // Title + location
+                '<div style="flex:1;min-width:140px;">' +
+                '<a href="/Detail/?id=' + l.id + '&preview=1" target="_blank" style="text-decoration:none;">' +
+                '<p style="margin:0 0 2px;font-size:14px;font-weight:700;color:#1a1a1a;line-height:1.3;">' + escapeHtml(l.title) + '</p></a>' +
+                '<p style="margin:0;font-size:12px;color:#aaa;"><i class="fa-solid fa-location-dot" style="color:#EB6753;font-size:10px;"></i> ' + escapeHtml(loc) + '</p>' +
+                (CURRENT_ROLE === 'admin' && owner.full_name
+                    ? '<p style="margin:2px 0 0;font-size:12px;color:#888;"><i class="fa-solid fa-user" style="color:#EB6753;font-size:10px;"></i> ' + escapeHtml(owner.full_name) + ' · ' + escapeHtml(owner.email||'') + '</p>'
+                    : '') +
+                '</div>' +
+                // Price
+                '<p style="font-weight:800;color:#EB6753;font-size:15px;margin:0;flex-shrink:0;white-space:nowrap;">' +
+                priceFmt + ' <span style="font-size:11px;color:#aaa;font-weight:400;">RWF' + unit + '</span></p>' +
+                // Approve / Reject (admin only) | Pending badge (owner)
+                '<div style="display:flex;gap:6px;flex-shrink:0;">' +
+                (CURRENT_ROLE === 'admin'
+                    ? '<button onclick="dashApprove(\'' + l.id + '\',this)" style="background:#e8f8f0;color:#27ae60;border:1px solid #b8e6ce;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;transition:opacity 0.2s;"><i class="fa-solid fa-check"></i> Approve</button>' +
+                      '<button onclick="dashReject(\'' + l.id + '\',this)" style="background:#fde8e8;color:#e74c3c;border:1px solid #f5c6c6;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;transition:opacity 0.2s;"><i class="fa-solid fa-xmark"></i> Reject</button>'
+                    : '<span style="background:#fff3cd;color:#856404;border:1px solid #ffd047;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">⏳ Pending Review</span>'
+                ) +
+                '</div>';
+            el.appendChild(row);
+        });
+
+        console.log('✅ [DASH] Pending listings widget loaded:', data.length);
+    } catch(err) {
+        console.error('❌ [DASH PENDING]', err);
+        el.innerHTML = '<div style="color:#e74c3c;padding:16px;">' + escapeHtml(err.message) + '</div>';
+    }
+}
+window.loadDashPendingListings = loadDashPendingListings;
+
+async function dashApprove(id, btn) {
+    if (!confirm('Approve this listing? It will immediately appear on the public Listings page.')) return;
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+    try {
+        const { error } = await _supabase.from('listings').update({ status: 'approved' }).eq('id', id);
+        if (error) throw error;
+        toast('✅ Listing approved — now live!', 'success');
+        bustListingCache();
+        const row = document.getElementById('dplRow_' + id);
+        if (row) { row.style.opacity = '0'; setTimeout(() => row.remove(), 320); }
+        // Also refresh the sidebar Listing Requests panel if visible
+        if (document.getElementById('listingRequestsContainer')) loadListingRequests();
+    } catch(err) {
+        toast('Failed: ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = '<i class="fa-solid fa-check"></i> Approve'; }
+    }
+}
+window.dashApprove = dashApprove;
+
+async function dashReject(id, btn) {
+    if (!confirm('Reject and permanently delete this listing request?')) return;
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+    try {
+        const { error } = await _supabase.from('listings').delete().eq('id', id);
+        if (error) throw error;
+        toast('Listing rejected and removed.', 'warning');
+        bustListingCache();
+        const row = document.getElementById('dplRow_' + id);
+        if (row) { row.style.opacity = '0'; setTimeout(() => row.remove(), 320); }
+        if (document.getElementById('listingRequestsContainer')) loadListingRequests();
+    } catch(err) {
+        toast('Failed: ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = '<i class="fa-solid fa-xmark"></i> Reject'; }
+    }
+}
+window.dashReject = dashReject;
 
 /* ===========================
     GLOBAL EXPORTS

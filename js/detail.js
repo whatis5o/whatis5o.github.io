@@ -47,7 +47,7 @@ async function loadListingDetails() {
             id, title, description, price, currency, address,
             availability_status, status, avg_rating, reviews_count,
             category_slug, landmark_description,
-            province_id, district_id, sector_id,
+            province_id, district_id, sector_id, owner_id,
             provinces ( name ),
             districts ( name ),
             sectors ( name ),
@@ -115,6 +115,56 @@ async function loadListingDetails() {
     document.getElementById('skelEl').style.display = 'none';
     document.getElementById('contentEl').style.display = 'grid';
     console.log('✅ [DETAIL] Page rendered');
+
+    // ── Pending notice: hide booking form if not approved ──
+    const isPreview = new URLSearchParams(window.location.search).get('preview') === '1';
+    if (listing.status !== 'approved') {
+        const bf = document.getElementById('bookingForm');
+        if (bf) bf.innerHTML =
+            '<div style="background:#fff8e1;border:1.5px solid #ffd047;border-radius:12px;padding:18px 20px;text-align:center;margin-top:4px;">' +
+            '<i class="fa-solid fa-clock" style="font-size:28px;color:#f39c12;display:block;margin-bottom:8px;"></i>' +
+            '<p style="font-weight:700;color:#856404;margin:0 0 4px;font-size:15px;">Awaiting Approval</p>' +
+            '<p style="color:#6c5700;font-size:13px;margin:0;">This listing hasn\'t been approved yet and cannot be booked.</p>' +
+            (isPreview ? '<p style="margin:10px 0 0;font-size:12px;color:#aaa;">Preview mode — only you can see this.</p>' : '') +
+            '</div>';
+    }
+
+    // ── Fetch and render owner contact info ──
+    if (listing.owner_id) {
+        _supabase
+            .from('profiles')
+            .select('full_name, email, phone')
+            .eq('id', listing.owner_id)
+            .single()
+            .then(({ data: owner }) => { if (owner) renderOwnerContact(owner); });
+    }
+}
+
+function renderOwnerContact(owner) {
+    // Inject contact card before the reviews section
+    const anchor = document.getElementById('reviewsSection');
+    if (!anchor || document.getElementById('ownerContactCard')) return;
+    const el = document.createElement('div');
+    el.id = 'ownerContactCard';
+    el.innerHTML =
+        '<div style="background:#fff;border-radius:16px;padding:22px 24px;margin-bottom:24px;border:1px solid #f0f0f0;box-shadow:0 2px 12px rgba(0,0,0,0.05);">' +
+        '<h3 style="font-size:16px;font-weight:700;color:#1a1a1a;margin:0 0 16px;padding-bottom:10px;border-bottom:2px solid #f5f5f5;">' +
+        '<i class="fa-solid fa-user-tie" style="color:#EB6753;margin-right:8px;"></i>Contact Host</h3>' +
+        '<div style="display:flex;align-items:center;gap:14px;">' +
+        '<div style="width:50px;height:50px;border-radius:50%;background:#EB6753;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;flex-shrink:0;">' +
+        escHtml((owner.full_name||'H').charAt(0).toUpperCase()) + '</div>' +
+        '<div style="flex:1;">' +
+        '<p style="font-size:15px;font-weight:700;color:#1a1a1a;margin:0 0 6px;">' + escHtml(owner.full_name||'Host') + '</p>' +
+        (owner.email
+            ? '<a href="mailto:' + escHtml(owner.email) + '" style="display:flex;align-items:center;gap:7px;color:#555;font-size:13px;text-decoration:none;margin-bottom:5px;transition:color 0.2s;" onmouseover="this.style.color=\'#EB6753\'" onmouseout="this.style.color=\'#555\'">' +
+              '<i class="fa-solid fa-envelope" style="color:#EB6753;font-size:12px;width:14px;text-align:center;"></i>' + escHtml(owner.email) + '</a>'
+            : '') +
+        (owner.phone
+            ? '<a href="tel:' + escHtml(owner.phone) + '" style="display:flex;align-items:center;gap:7px;color:#555;font-size:13px;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color=\'#EB6753\'" onmouseout="this.style.color=\'#555\'">' +
+              '<i class="fa-solid fa-phone" style="color:#EB6753;font-size:12px;width:14px;text-align:center;"></i>' + escHtml(owner.phone) + '</a>'
+            : '<p style="font-size:12px;color:#ccc;margin:0;font-style:italic;">No phone number listed</p>') +
+        '</div></div></div>';
+    anchor.before(el);
 }
 
 function renderMediaSlider(title) {

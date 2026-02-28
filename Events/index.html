@@ -8,7 +8,301 @@
     <link href="https://fonts.googleapis.com/css2?family=Oleo+Script+Swash+Caps:wght@400;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/Style/style.css">
     <style>
-        :root { --primary: #EB6753; --dark: #1a2f1e; }
+        
+        /* ── FOOTER ── */
+        .main-footer {
+            background: var(--green-dark);
+            color: white;
+            padding-top: 20px;
+            position: relative;
+            margin-top: 10px;
+        }
+
+        /* CTA Banner (overlaps footer) */
+        .footer-cta {
+            background: linear-gradient(135deg, var(--amber) 0%, var(--amber-light) 100%);
+            padding: 50px 6%;
+            border-radius: 25px;
+            margin: 0 6%;
+            transform: translateY(-80px);
+            box-shadow: 0 25px 50px rgba(196, 127, 42, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+
+        .cta-content h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            color: white;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .cta-content p {
+            font-size: clamp(0.95rem, 2vw, 1.1rem);
+            color: rgba(255, 255, 255, 0.9);
+            max-width: 500px;
+        }
+
+        .cta-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .cta-btn {
+            padding: 14px 32px;
+            background: white;
+            color: var(--green-dark);
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .cta-btn:hover {
+            background: var(--green-dark);
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        .cta-phone {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .cta-phone span {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .cta-phone strong {
+            font-size: 1.3rem;
+            color: white;
+            font-family: 'Playfair Display', serif;
+        }
+        /* Footer Main Content */
+        .footer-content {
+            max-width: 1300px;
+            margin: -50px auto 0;
+            padding: 0 6%;
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr 1fr;
+            gap: 50px;
+            padding-bottom: 60px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        /* Brand Column */
+        .footer-brand h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            color: white;
+            margin-bottom: 16px;
+        }
+        .footer-brand p {
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 25px;
+            max-width: 280px;
+        }
+        .social-links {
+            display: flex;
+            gap: 12px;
+        }
+        .social-links a {
+            width: 42px;
+            height: 42px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-decoration: none;
+            transition: 0.3s;
+            font-size: 1.1rem;
+        }
+        .social-links a:hover {
+            background: var(--amber);
+            transform: translateY(-3px);
+        }
+        /* Link Columns */
+        .footer-column{
+            display: flex;
+            flex-direction: column;
+        }
+        .footer-column h4 {
+            font-size: 1.1rem;
+            color: white;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .footer-column ul {
+            list-style: none;
+        }
+        .footer-column ul li {
+            margin-bottom: 12px;
+        }
+        .footer-column ul li a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: 0.3s;
+            display: inline-block;
+        }
+        .footer-column ul li a:hover {
+            color: var(--amber-light);
+            transform: translateX(5px);
+        }
+        /* Newsletter */
+        .newsletter-form {
+            margin-top: 20px;
+        }
+        .newsletter-input {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .newsletter-input input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.95rem;
+            outline: none;
+        }
+        .newsletter-input input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        .newsletter-input button {
+            padding: 12px 24px;
+            background: var(--amber);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .newsletter-input button:hover {
+            background: var(--amber-light);
+        }
+        /* Footer Bottom */
+        .footer-bottom {
+            padding: 30px 6%;
+            text-align: center;
+        }
+        .footer-bottom-content {
+            max-width: 1300px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .copyright {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        .footer-bottom-links {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+        .footer-bottom-links a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: 0.3s;
+        }
+
+        .footer-bottom-links a:hover {
+            color: var(--amber-light);
+        }
+        /* ── RESPONSIVE ── */
+        @media (max-width: 1024px) {
+            .footer-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 40px;
+            }
+        }
+        @media (max-width: 768px) {
+            .main-footer {
+                margin-top: 10px;
+            }
+            .footer-cta {
+                flex-direction: column;
+                text-align: center;
+                padding: 40px 6%;
+                transform: translateY(-50px);
+            }
+            .cta-content p {
+                max-width: 100%;
+            }
+            .cta-actions {
+                justify-content: center;
+                width: 100%;
+            }
+            .footer-grid {
+                grid-template-columns: 1fr;
+                gap: 35px;
+            }
+            .footer-brand p {
+                max-width: 100%;
+            }
+            .footer-column {
+                flex-direction: column;
+            }
+            .footer-bottom-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            .newsletter-input {
+                flex-direction: column;
+            }
+            .newsletter-input button {
+                width: 100%;
+            }
+        }
+        @media (max-width: 480px) {
+            .footer-cta {
+                padding: 30px 5%;
+            }
+            .footer-column {
+                flex-direction: column;
+            }
+            .cta-btn {
+                width: 100%;
+                text-align: center;
+            }
+            .social-links {
+                justify-content: center;
+            }
+        }
+        :root {
+            --primary: #EB6753; 
+            --dark: #1a2f1e;
+            --green-dark: #16213e;
+            --green-mid: #2d5233;
+            --amber: #EB6753;
+            --amber-light: #EB6753;
+            --cream: #f8f4ee;
+            --text-dark: #1a1a1a;
+            --text-muted: #7a7a6e;
+        }
         body { background: #f5f5f5; }
 
         /* ── HERO ── */
@@ -181,6 +475,89 @@
         <div class="state-box"><i class="fa-solid fa-spinner fa-spin"></i><p>Loading events...</p></div>
     </div>
 </section>
+        <!-- ── FOOTER ── -->
+        <footer class="main-footer">
+            
+            <!-- CTA Banner -->
+            <div class="footer-cta">
+                <div class="cta-content">
+                    <h2>Ready to Experience Rwanda?</h2>
+                    <p>Find your perfect stay or vehicle today and start your authentic Rwandan adventure.</p>
+                </div>
+                <div class="cta-actions">
+                    <a href="#" class="cta-btn">Start Exploring</a>
+                    <div class="cta-phone">
+                        <span>Call us anytime</span>
+                        <strong>+250 788 123 456</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Footer Content -->
+            <div class="footer-content">
+                <div class="footer-grid">
+
+                    <!-- Brand Column -->
+                    <div class="footer-brand">
+                        <h2>AfriStay</h2>
+                        <p>Your trusted platform for authentic stays and seamless travel experiences across Rwanda's most beautiful destinations.</p>
+                        <div class="social-links">
+                            <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+                            <a href="#" aria-label="Twitter"><i class="fa-brands fa-twitter"></i></a>
+                            <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                            <a href="#" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+                        </div>
+                    </div>
+
+                    <!-- Quick Links -->
+                    <div class="footer-column">
+                        <h4>Quick Links</h4>
+                        <ul>
+                            <li><a href="/">Home</a></li>
+                            <li><a href="/Listings">Listings</a></li>
+                            <li><a href="/About">About </a></li>
+                            <li><a href="/Contact">Contact</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- Services -->
+                    <div class="footer-column">
+                        <h4>Services</h4>
+                        <ul>
+                            <li><a href="#">Property Rentals</a></li>
+                            <li><a href="#">Vehicle Hire</a></li>
+                            <li><a href="#">Travel Planning</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- Newsletter -->
+                    <div class="footer-column">
+                        <h4>Stay Updated</h4>
+                        <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.9rem; line-height: 1.6; margin-bottom: 15px;">Subscribe to get special offers and travel tips.</p>
+                        <div class="newsletter-form">
+                            <div class="newsletter-input">
+                                <input type="email" placeholder="Your email address" required>
+                                <button type="submit">Subscribe</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Footer Bottom -->
+            <div class="footer-bottom">
+                <div class="footer-bottom-content">
+                    <p class="copyright">&copy; 2024 AfriStay. All rights reserved. Made with care in Rwanda.</p>
+                    <div class="footer-bottom-links">
+                        <a href="#">Privacy Policy</a>
+                        <a href="#">Terms of Service</a>
+                        <a href="#">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+
+        </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/config.js"></script>

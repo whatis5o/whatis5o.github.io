@@ -218,8 +218,23 @@ body { background: var(--light-bg); color: var(--text-dark); display:flex; min-h
 
 /* sidebar */
 .sidebar { width: 260px; background: var(--white); position: fixed; height:100%; z-index: 100; box-shadow: var(--shadow); display:flex; flex-direction:column; }
-.logo-area { padding: 28px; text-align:center; }
-.logo-area h1 { font-family: 'Oleo Script Swash Caps', cursive; color:var(--primary); font-size:28px; }
+.logo-area {
+    padding: 16px 20px 12px;
+    text-align: center;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    margin-bottom: 8px;
+}
+/* Image logo — sized to fit the sidebar cleanly */
+.logo-area img {
+    height: 48px;
+    width: auto;
+    max-width: 180px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
+}
+/* Text logo fallback (if image fails) */
+.logo-area h1 { font-family: 'Oleo Script Swash Caps', cursive; color:var(--primary); font-size:26px; margin:0; }
 
 /* main */
 .main-content { margin-left:260px; flex:1; padding:36px; transition: margin-left .2s ease; }
@@ -410,9 +425,8 @@ img { max-width:100%; height:auto; display:block; }
     width: 80px;
 }
 
-.sidebar.collapsed .logo-area h1 {
-    display: none;
-}
+.sidebar.collapsed .logo-area h1 { display: none; }
+.sidebar.collapsed .logo-area img { height: 36px; max-width: 50px; object-fit: contain; }
 
 .sidebar.collapsed .nav-btn span {
     display: none;
