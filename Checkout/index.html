@@ -3,183 +3,428 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout - AfriStay</title>
+    <title>Checkout — AfriStay</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Oleo+Script+Swash+Caps:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/Style/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        :root { --primary: #EB6753; }
-        body { background: #f5f5f5; }
-        .page-body { max-width: 900px; margin: 0 auto; padding: 110px 24px 72px; }
+        :root { --primary: #EB6753; --primary-dark: #d45540; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: #f7f7f7; min-height: 100vh; }
 
-        .checkout-grid { display: grid; grid-template-columns: 1fr 340px; gap: 28px; align-items: start; }
-
-        /* Summary card */
-        .summary-card, .payment-card {
-            background: #fff; border-radius: 20px;
-            box-shadow: 0 4px 30px rgba(0,0,0,0.08); padding: 28px;
+        /* NAV */
+        #navbar {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            width: 90%; height: 65px; background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px); border-radius: 50px; padding: 0 40px;
+            display: flex; align-items: center; justify-content: space-between;
+            z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
-        .payment-card { position: sticky; top: 100px; }
+        .logo-text { font-size: 26px; font-weight: 800; color: var(--primary); text-decoration: none; }
+        .back-link { color: #666; text-decoration: none; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: color 0.2s; }
+        .back-link:hover { color: var(--primary); }
 
-        .card-title { font-size: 18px; font-weight: 700; color: #1a1a1a; margin: 0 0 20px; padding-bottom: 14px; border-bottom: 2px solid #f5f5f5; }
+        /* PAGE LAYOUT */
+        .page { max-width: 960px; margin: 0 auto; padding: 110px 20px 60px; display: grid; grid-template-columns: 1fr 380px; gap: 32px; align-items: start; }
 
-        /* Listing row */
-        .listing-row { display: flex; gap: 16px; align-items: center; margin-bottom: 24px; }
-        .listing-thumb { width: 80px; height: 60px; border-radius: 10px; object-fit: cover; background: #eee; flex-shrink: 0; }
-        .listing-info h3 { font-size: 16px; font-weight: 700; color: #1a1a1a; margin: 0 0 4px; }
-        .listing-info p { font-size: 13px; color: #888; margin: 0; }
+        /* SUMMARY */
+        .summary-card { background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+        .summary-img { width: 100%; height: 220px; object-fit: cover; display: block; }
+        .summary-img-ph { width:100%; height:220px; background:linear-gradient(135deg,#f5f5f5,#e8e8e8); display:flex; align-items:center; justify-content:center; }
+        .summary-body { padding: 24px; }
+        .summary-body h2 { font-size: 20px; font-weight: 800; color: #1a1a1a; margin-bottom: 20px; line-height: 1.3; }
+        .s-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f5f5f5; font-size:14px; }
+        .s-row:last-child { border:none; }
+        .s-row .lbl { color:#888; display:flex; align-items:center; gap:7px; }
+        .s-row .lbl i { color:var(--primary); width:14px; text-align:center; }
+        .s-row .val { font-weight:700; color:#1a1a1a; }
+        .s-total { display:flex; justify-content:space-between; align-items:center; margin-top:18px; padding-top:18px; border-top:2px solid #f0f0f0; }
+        .s-total .lbl { font-size:15px; font-weight:700; color:#1a1a1a; }
+        .s-total .val { font-size:26px; font-weight:800; color:var(--primary); }
 
-        /* Date row */
-        .date-row { display: flex; gap: 12px; margin-bottom: 20px; }
-        .date-box { flex: 1; background: #f9f9f9; border-radius: 12px; padding: 14px; }
-        .date-box .label { font-size: 11px; text-transform: uppercase; font-weight: 700; color: #aaa; letter-spacing: 0.6px; margin-bottom: 4px; }
-        .date-box .value { font-size: 15px; font-weight: 600; color: #222; }
+        /* PAY CARD */
+        .pay-card { background:#fff; border-radius:20px; padding:28px; box-shadow:0 4px 24px rgba(0,0,0,0.08); position:sticky; top:100px; }
+        .pay-card h3 { font-size:18px; font-weight:800; color:#1a1a1a; margin-bottom:4px; }
+        .pay-card .sub { font-size:13px; color:#aaa; margin-bottom:22px; }
 
-        /* Price breakdown */
-        .price-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #555; margin-bottom: 12px; }
-        .price-row.total { border-top: 2px solid #f0f0f0; padding-top: 14px; margin-top: 4px; font-size: 18px; font-weight: 700; color: #1a1a1a; }
-        .price-row.total .amount { color: var(--primary); }
+        /* FORM */
+        .fg { margin-bottom:14px; }
+        .fg label { display:block; font-size:11px; font-weight:700; color:#999; margin-bottom:5px; text-transform:uppercase; letter-spacing:0.5px; }
+        .fg input { width:100%; padding:12px 14px; border:1.5px solid #e8e8e8; border-radius:10px; font-size:14px; outline:none; transition:all 0.2s; font-family:'Inter',sans-serif; background:#fff; }
+        .fg input:focus { border-color:var(--primary); box-shadow:0 0 0 4px rgba(235,103,83,0.08); }
 
-        /* Payment method */
-        .method-title { font-size: 13px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
-        .method-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .method-btn { border: 2px solid #eee; border-radius: 12px; padding: 14px 10px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fff; }
-        .method-btn:hover, .method-btn.selected { border-color: var(--primary); background: #fff5f4; }
-        .method-btn i { font-size: 22px; display: block; margin-bottom: 6px; color: #555; }
-        .method-btn.selected i { color: var(--primary); }
-        .method-btn span { font-size: 12px; font-weight: 600; color: #444; }
+        /* BADGES */
+        .badges { display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+        .badge { display:flex; align-items:center; gap:4px; font-size:11px; color:#666; background:#f5f5f5; padding:5px 10px; border-radius:20px; }
+        .badge i { color:#2ecc71; }
 
-        /* Confirm button */
-        .confirm-btn { width: 100%; padding: 16px; background: var(--primary); color: #fff; border: none;
-            border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; display: flex;
-            align-items: center; justify-content: center; gap: 10px; transition: all 0.3s; }
-        .confirm-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(235,103,83,0.4); }
-        .confirm-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+        /* PAY BUTTON */
+        .pay-btn { width:100%; padding:16px; background:var(--primary); color:#fff; border:none; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; transition:all 0.3s; }
+        .pay-btn:hover:not(:disabled) { background:var(--primary-dark); transform:translateY(-2px); box-shadow:0 8px 24px rgba(235,103,83,0.35); }
+        .pay-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none; }
 
-        .status-msg { font-size: 13px; text-align: center; margin-top: 12px; font-weight: 500; min-height: 20px; }
+        .powered { text-align:center; margin-top:14px; font-size:12px; color:#bbb; }
 
-        .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--primary); text-decoration: none;
-            font-size: 14px; font-weight: 600; margin-bottom: 20px; }
-        .back-link:hover { opacity: 0.8; }
+        /* ERROR */
+        .err { background:#fde8e8; border:1.5px solid #f5c6c6; border-radius:10px; padding:12px 16px; font-size:13px; color:#c0392b; margin-bottom:14px; display:none; align-items:center; gap:8px; }
 
-        .secure-note { text-align: center; font-size: 12px; color: #aaa; margin-top: 14px; }
-        .secure-note i { color: #2ecc71; }
+        /* SUCCESS */
+        #successView { display:none; max-width:560px; margin:120px auto 60px; background:#fff; border-radius:20px; box-shadow:0 4px 24px rgba(0,0,0,0.08); padding:48px 32px; text-align:center; }
+        .suc-icon { font-size:64px; color:#2ecc71; margin-bottom:20px; }
+        #successView h2 { font-size:26px; font-weight:800; color:#1a1a1a; margin-bottom:8px; }
+        #successView p { font-size:15px; color:#666; margin-bottom:20px; }
+        .suc-ref { background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:12px 18px; font-size:13px; color:#166534; font-weight:700; margin-bottom:24px; }
+        .btn-ol { display:inline-flex; align-items:center; gap:8px; padding:12px 22px; border:2px solid var(--primary); color:var(--primary); border-radius:12px; font-size:14px; font-weight:700; text-decoration:none; margin:4px; transition:all 0.2s; }
+        .btn-ol:hover { background:var(--primary); color:#fff; }
 
-        @media (max-width: 768px) { .checkout-grid { grid-template-columns: 1fr; } .payment-card { position: static; } }
-        @media (max-width: 500px) { .date-row { flex-direction: column; } .method-grid { grid-template-columns: 1fr; } }
+        /* SKELETON */
+        .skel { background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%); background-size:200%; animation:sh 1.4s infinite; border-radius:8px; color:transparent!important; }
+        @keyframes sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+        @media (max-width:760px) {
+            .page { grid-template-columns:1fr; padding-top:90px; }
+            .pay-card { position:static; }
+            #navbar { top:0; left:0; transform:none; width:100%; border-radius:0; padding:0 20px; justify-content:space-between; }
+        }
     </style>
 </head>
 <body>
 
-        <nav id="navbar">
-            <div class="logo-area">
-                <a href="/"><img src="/Pictures/light-afri1.png" alt="AfriStay" class="full-logo"></a>
-            </div>
-    
-            <div class="nav-wrapper" id="navWrapper">
-                <i class="fa-solid fa-xmark menu-close" onclick="toggleMenu()"></i>
-                <div class="nav-center">
-                    <ul class="nav-links">
-                        <li><a href="/">Home</a></li>
-                        <li><a href="/Listings">Listings</a></li>
-                        <li><a href="/Events/">Events</a></li>
-                        <li><a href="/About">About</a></li>
-                        <li><a href="/Contact">Contact</a></li>
-                    </ul>
-                </div>
-                <div class="nav-right">
-                    <a href="/Favorites" class="icon-link"><i class="fa-regular fa-heart"></i></a>
-                    <a href="/Auth" id="auth-btn" class="signin-btn">Sign In</a> 
-                </div>
-            </div>
-            <i class="fa-solid fa-bars menu-open" onclick="toggleMenu()"></i>
-        </nav>
-
-<div class="page-body">
+<nav id="navbar">
+    <a href="/" class="logo-text">AfriStay</a>
     <a href="javascript:history.back()" class="back-link">
         <i class="fa-solid fa-arrow-left"></i> Back to Listing
     </a>
+</nav>
 
-    <div class="checkout-grid">
+<!-- MAIN CHECKOUT PAGE -->
+<div class="page" id="mainPage">
 
-        <!-- LEFT: Booking Summary -->
-        <div class="summary-card">
-            <h2 class="card-title"><i class="fa-solid fa-receipt" style="color:#EB6753;margin-right:8px;"></i>Booking Summary</h2>
+    <!-- Booking summary -->
+    <div class="summary-card">
+        <div id="summaryImg" class="summary-img-ph">
+            <i class="fa-solid fa-image" style="font-size:40px;color:#ccc;"></i>
+        </div>
+        <div class="summary-body">
+            <h2 id="summaryTitle" class="skel" style="height:26px;width:68%;">&nbsp;</h2>
 
-            <div class="listing-row">
-                <img id="listingThumb" class="listing-thumb" src="" alt=""
-                     onerror="this.style.display='none'">
-                <div class="listing-info">
-                    <h3 id="listingTitle">Loading...</h3>
-                    <p id="listingId" style="font-size:11px;color:#ccc;"></p>
-                </div>
+            <div class="s-row">
+                <span class="lbl"><i class="fa-solid fa-calendar-check"></i> Check-in</span>
+                <span class="val" id="sCheckIn">—</span>
+            </div>
+            <div class="s-row">
+                <span class="lbl"><i class="fa-solid fa-calendar-xmark"></i> Check-out</span>
+                <span class="val" id="sCheckOut">—</span>
+            </div>
+            <div class="s-row">
+                <span class="lbl"><i class="fa-solid fa-moon"></i> Duration</span>
+                <span class="val" id="sNights">—</span>
+            </div>
+            <div class="s-row">
+                <span class="lbl"><i class="fa-solid fa-tag"></i> Nightly rate</span>
+                <span class="val" id="sRate">—</span>
             </div>
 
-            <div class="date-row">
-                <div class="date-box">
-                    <div class="label"><i class="fa-solid fa-plane-arrival"></i> Check-in</div>
-                    <div class="value" id="checkInDate">—</div>
-                </div>
-                <div style="display:flex;align-items:center;color:#ccc;font-size:20px;padding-top:14px;">→</div>
-                <div class="date-box">
-                    <div class="label"><i class="fa-solid fa-plane-departure"></i> Check-out</div>
-                    <div class="value" id="checkOutDate">—</div>
-                </div>
-            </div>
-
-            <div class="price-row">
-                <span id="nightsLabel">— nights</span>
-                <span id="nightsAmount">—</span>
-            </div>
-            <div class="price-row">
-                <span>Service fee</span>
-                <span style="color:#2ecc71;">Free</span>
-            </div>
-            <div class="price-row total">
-                <span>Total</span>
-                <span class="amount" id="totalAmount">—</span>
+            <div class="s-total">
+                <span class="lbl">Total Amount</span>
+                <span class="val" id="sTotal">—</span>
             </div>
         </div>
+    </div>
 
-        <!-- RIGHT: Payment Card -->
-        <div class="payment-card">
-            <h2 class="card-title"><i class="fa-solid fa-credit-card" style="color:#EB6753;margin-right:8px;"></i>Pay & Confirm</h2>
+    <!-- Payment form -->
+    <div class="pay-card">
+        <h3>Pay &amp; Confirm</h3>
+        <p class="sub">Secured by Flutterwave · MTN MoMo, Airtel, Card</p>
 
-            <div class="method-title">Payment Method</div>
-            <div class="method-grid">
-                <div class="method-btn selected" data-method="mobile_money" onclick="selectMethod(this, 'mobile_money')">
-                    <i class="fa-solid fa-mobile-screen-button"></i>
-                    <span>Mobile Money</span>
-                </div>
-                <div class="method-btn" data-method="card" onclick="selectMethod(this, 'card')">
-                    <i class="fa-solid fa-credit-card"></i>
-                    <span>Card</span>
-                </div>
-                <div class="method-btn" data-method="bank_transfer" onclick="selectMethod(this, 'bank_transfer')">
-                    <i class="fa-solid fa-building-columns"></i>
-                    <span>Bank Transfer</span>
-                </div>
-                <div class="method-btn" data-method="cash" onclick="selectMethod(this, 'cash')">
-                    <i class="fa-solid fa-money-bill-wave"></i>
-                    <span>Cash on Arrival</span>
-                </div>
-            </div>
-
-            <div id="methodNote" style="background:#f9f9f9;border-radius:10px;padding:12px;font-size:13px;color:#666;margin-bottom:18px;line-height:1.5;">
-                📱 You'll receive a Mobile Money prompt after confirming.
-            </div>
-
-            <button class="confirm-btn" id="confirmBtn" onclick="confirmBooking()">
-                <i class="fa-solid fa-lock"></i> Confirm Booking
-            </button>
-            <div class="status-msg" id="statusMsg"></div>
-            <div class="secure-note"><i class="fa-solid fa-shield-halved"></i> Secure & encrypted checkout</div>
+        <div class="err" id="errBanner">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span id="errMsg">Something went wrong.</span>
         </div>
+
+        <div class="fg">
+            <label>Full Name *</label>
+            <input type="text" id="gName" placeholder="e.g. Amahoro Jean" autocomplete="name">
+        </div>
+        <div class="fg">
+            <label>Email Address *</label>
+            <input type="email" id="gEmail" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="fg">
+            <label>Phone Number *</label>
+            <input type="tel" id="gPhone" placeholder="+250 78X XXX XXX" autocomplete="tel">
+        </div>
+
+        <div class="badges">
+            <div class="badge"><i class="fa-solid fa-lock"></i> SSL Encrypted</div>
+            <div class="badge"><i class="fa-solid fa-shield-halved"></i> 3D Secure</div>
+            <div class="badge"><i class="fa-solid fa-circle-check"></i> MTN &amp; Airtel MoMo</div>
+        </div>
+
+        <button class="pay-btn" id="payBtn" onclick="initiatePayment()">
+            <i class="fa-solid fa-credit-card"></i>
+            <span id="payBtnLabel">Pay Now</span>
+        </button>
+
+        <div class="powered">🔒 Powered by Flutterwave — PCI DSS Level 1 Certified</div>
     </div>
 </div>
 
+<!-- SUCCESS VIEW -->
+<div id="successView">
+    <div class="suc-icon"><i class="fa-solid fa-circle-check"></i></div>
+    <h2>Booking Confirmed! 🎉</h2>
+    <p>Your payment was received. The host will reach out to confirm your stay details.</p>
+    <div class="suc-ref" id="sucRef"></div>
+    <div>
+        <a href="/Dashboard" class="btn-ol"><i class="fa-solid fa-gauge"></i> My Bookings</a>
+        <a href="/Listings" class="btn-ol"><i class="fa-solid fa-magnifying-glass"></i> Explore More</a>
+    </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     FLUTTERWAVE INLINE JS — loads the payment popup
+     Public key is safe to expose in frontend code.
+     Secret key lives only in the Edge Function (verify-payment).
+     ══════════════════════════════════════════════════════════ -->
+<script src="https://checkout.flutterwave.com/v3.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/config.js"></script>
-<script src="/js/checkout.js"></script>
+
+<script>
+/* ─────────────────────────────────────────────────────────────
+   !! REPLACE THIS with your actual Flutterwave PUBLIC key
+   Get it from: https://dashboard.flutterwave.com/settings/apis
+   Test key starts with:  FLWPUBK_TEST-
+   Live key starts with:  FLWPUBK-
+   ───────────────────────────────────────────────────────────── */
+const FLW_PUBLIC_KEY = 'FLWPUBK_TEST-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-X';
+
+// ── Parse booking params from URL ──
+const P       = new URLSearchParams(window.location.search);
+const LISTING = P.get('listing_id') || '';
+const TITLE   = P.get('title')      || 'AfriStay Listing';
+const S_DATE  = P.get('start_date') || '';
+const E_DATE  = P.get('end_date')   || '';
+const NIGHTS  = parseInt(P.get('nights') || '1', 10);
+const PRICE   = Number(P.get('price')  || 0);
+const CUR     = P.get('currency')   || 'RWF';
+const TOTAL   = Number(P.get('total') || 0);
+
+// ── Helpers ──
+function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d + 'T00:00:00').toLocaleDateString('en-US', {
+        weekday:'short', month:'short', day:'numeric', year:'numeric'
+    });
+}
+function fmtMoney(n) { return Number(n).toLocaleString('en-RW') + ' ' + CUR; }
+function setText(id, v) { const e = document.getElementById(id); if (e) e.textContent = v; }
+function setVal(id, v)  { const e = document.getElementById(id); if (e) e.value = v; }
+function escH(s) {
+    return String(s||'').replace(/[&<>"']/g, c =>
+        ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ── Populate summary on load ──
+document.addEventListener('DOMContentLoaded', async () => {
+    const titleEl = document.getElementById('summaryTitle');
+    if (titleEl) { titleEl.textContent = TITLE; titleEl.classList.remove('skel'); }
+    setText('sCheckIn',  fmtDate(S_DATE));
+    setText('sCheckOut', fmtDate(E_DATE));
+    setText('sNights',   NIGHTS + (NIGHTS === 1 ? ' night' : ' nights'));
+    setText('sRate',     fmtMoney(PRICE) + ' / night');
+    setText('sTotal',    fmtMoney(TOTAL));
+    setText('payBtnLabel', 'Pay ' + fmtMoney(TOTAL));
+
+    const sb = window.supabaseClient;
+
+    // Load listing thumbnail
+    if (sb && LISTING) {
+        const { data: imgs } = await sb.from('listing_images')
+            .select('image_url').eq('listing_id', LISTING).limit(1);
+        if (imgs?.[0]?.image_url) {
+            document.getElementById('summaryImg').innerHTML =
+                '<img src="' + escH(imgs[0].image_url) + '" class="summary-img" alt="' + escH(TITLE) + '" loading="eager">';
+        }
+    }
+
+    // Pre-fill form from auth profile
+    if (sb) {
+        const { data: { user } } = await sb.auth.getUser().catch(() => ({ data: {} }));
+        if (user) {
+            const { data: prof } = await sb.from('profiles')
+                .select('full_name,email,phone').eq('id', user.id).single();
+            setVal('gName',  prof?.full_name || '');
+            setVal('gEmail', prof?.email     || user.email || '');
+            setVal('gPhone', prof?.phone     || '');
+        }
+    }
+});
+
+// ── Validate form ──
+function validate() {
+    const name  = document.getElementById('gName')?.value.trim();
+    const email = document.getElementById('gEmail')?.value.trim();
+    const phone = document.getElementById('gPhone')?.value.trim();
+    if (!name)                        { showErr('Please enter your full name.');       return null; }
+    if (!email || !email.includes('@')){ showErr('Please enter a valid email.');        return null; }
+    if (!phone)                        { showErr('Please enter your phone number.');    return null; }
+    if (!LISTING)                      { showErr('Invalid session — no listing ID.');   return null; }
+    if (TOTAL <= 0)                    { showErr('Invalid booking amount.');            return null; }
+    return { name, email, phone };
+}
+
+// ── Trigger Flutterwave popup ──
+function initiatePayment() {
+    hideErr();
+    const form = validate();
+    if (!form) return;
+
+    const btn = document.getElementById('payBtn');
+    btn.disabled = true;
+    setText('payBtnLabel', 'Opening secure payment...');
+
+    // Unique transaction reference — stored with the booking for reconciliation
+    const txRef = 'AFRISTAY-' + Date.now() + '-' + Math.random().toString(36).slice(2,7).toUpperCase();
+
+    FlutterwaveCheckout({
+        public_key:       FLW_PUBLIC_KEY,
+        tx_ref:           txRef,
+        amount:           TOTAL,
+        currency:         CUR,       // 'RWF' for Rwanda
+        country:          'RW',
+
+        // Payment options supported in Rwanda
+        payment_options:  'mobilemoney,ussd,card',
+
+        customer: {
+            email:        form.email,
+            phone_number: form.phone,
+            name:         form.name,
+        },
+
+        // Pass booking metadata — accessible in webhook + verification
+        meta: {
+            listing_id: LISTING,
+            start_date: S_DATE,
+            end_date:   E_DATE,
+            nights:     NIGHTS,
+        },
+
+        customizations: {
+            title:       'AfriStay Booking',
+            description: NIGHTS + ' night' + (NIGHTS > 1 ? 's' : '') + ': ' + TITLE,
+            logo:        window.location.origin + '/Pictures/light-afri1.png',
+        },
+
+        onclose() {
+            // User closed without paying
+            btn.disabled = false;
+            setText('payBtnLabel', 'Pay ' + fmtMoney(TOTAL));
+        },
+
+        async callback(data) {
+            console.log('[FLW] Callback status:', data.status, data);
+
+            if (data.status === 'successful' || data.status === 'completed') {
+                setText('payBtnLabel', 'Verifying payment...');
+                await confirmBooking(data, form, txRef);
+            } else {
+                btn.disabled = false;
+                setText('payBtnLabel', 'Pay ' + fmtMoney(TOTAL));
+                showErr('Payment did not complete (status: ' + data.status + '). Try again.');
+            }
+        }
+    });
+}
+
+// ── Verify via Edge Function + create booking ──
+async function confirmBooking(flwData, form, txRef) {
+    const sb = window.supabaseClient;
+
+    try {
+        /* ────────────────────────────────────────────────────────
+           STEP 1: Verify payment server-side
+           The Edge Function calls Flutterwave's API using the SECRET
+           key (never exposed in frontend) and returns { verified: true }
+           ──────────────────────────────────────────────────────── */
+        const res = await fetch(CONFIG.FUNCTIONS_BASE + '/verify-payment', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                transaction_id:    flwData.transaction_id,
+                tx_ref:            txRef,
+                expected_amount:   TOTAL,
+                expected_currency: CUR,
+            })
+        });
+
+        const vData = await res.json();
+        if (!vData.verified) throw new Error(vData.message || 'Verification failed');
+
+        /* ────────────────────────────────────────────────────────
+           STEP 2: Get authenticated user (if logged in)
+           ──────────────────────────────────────────────────────── */
+        let userId = null;
+        if (sb) {
+            const { data: { user } } = await sb.auth.getUser().catch(() => ({ data: {} }));
+            userId = user?.id || null;
+        }
+
+        /* ────────────────────────────────────────────────────────
+           STEP 3: Create booking record in Supabase
+           ──────────────────────────────────────────────────────── */
+        const { data: booking, error } = await sb.from('bookings').insert({
+            listing_id:          LISTING,
+            user_id:             userId,
+            start_date:          S_DATE,
+            end_date:            E_DATE,
+            total_amount:        TOTAL,
+            status:              'confirmed',
+            payment_status:      'paid',
+            payment_method:      'flutterwave',
+            payment_reference:   txRef,
+            flw_transaction_id:  String(flwData.transaction_id),
+            guest_name:          form.name,
+            guest_email:         form.email,
+            guest_phone:         form.phone,
+        }).select('id').single();
+
+        if (error) throw error;
+
+        showSuccess(booking.id, txRef);
+
+    } catch (err) {
+        console.error('[CHECKOUT]', err);
+        showErr('Booking failed: ' + err.message + '. Save ref ' + txRef + ' and contact support.');
+        const btn = document.getElementById('payBtn');
+        if (btn) { btn.disabled = false; setText('payBtnLabel', 'Try Again'); }
+    }
+}
+
+// ── Show success page ──
+function showSuccess(bookingId, txRef) {
+    document.getElementById('mainPage').style.display  = 'none';
+    document.getElementById('successView').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('sucRef').innerHTML =
+        '<i class="fa-solid fa-receipt" style="margin-right:6px;"></i>' +
+        'Booking #' + String(bookingId || '').slice(0, 8).toUpperCase() +
+        '&nbsp;&nbsp;·&nbsp;&nbsp;Ref: ' + txRef;
+    document.title = 'Booking Confirmed — AfriStay';
+}
+
+function showErr(msg) {
+    const b = document.getElementById('errBanner');
+    document.getElementById('errMsg').textContent = msg;
+    b.style.display = 'flex';
+    b.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function hideErr() {
+    document.getElementById('errBanner').style.display = 'none';
+}
+</script>
+
 </body>
 </html>

@@ -508,6 +508,7 @@ body{
     padding: 80px 5%;
     background: white;
     overflow: hidden;
+    position: relative; /* ensures child overflow clips properly */
 }
 
 .carousel-container {
@@ -572,6 +573,11 @@ body{
 .carousel-wrapper {
     position: relative;
     overflow: hidden;
+    /* iOS Safari fix: force GPU compositing layer so overflow:hidden clips correctly */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    /* Prevent iOS from expanding the wrapper to accommodate translateX'd children */
+    will-change: transform;
 }
 
 .carousel-track {
@@ -659,32 +665,25 @@ body{
 
 /* Touch/Swipe Support */
 @media (hover: none) {
+    /* On touch devices: keep overflow hidden so the JS transform carousel
+       doesn't expand the wrapper to infinity on iOS Safari.
+       Touch/swipe is handled by JS touchstart/touchend in home.js. */
     .carousel-wrapper {
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        scroll-snap-type: x mandatory;
-        scrollbar-width: none;
+        overflow: hidden;
+        cursor: grab;
     }
-
-    .carousel-wrapper::-webkit-scrollbar {
-        display: none;
+    .carousel-wrapper:active {
+        cursor: grabbing;
     }
-
-    .property-card {
-        scroll-snap-align: start;
-    }
-
-
 }
 
 /* ── FOOTER ── */
 .main-footer {
     background: var(--green-dark);
     color: white;
-    padding-top: 20px;
+    padding-top: 10px;
     position: relative;
-    margin-top: 10px;
+    margin-top: 0px;
 }
 
 /* CTA Banner (overlaps footer) */
@@ -961,6 +960,3 @@ body{
         justify-content: center;
     }
 }
-
-
-

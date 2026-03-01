@@ -167,13 +167,16 @@
 
 
 /* --- MOBILE VIEW --- */
-.menu-open, .menu-close { display: none; }
+.menu-open, .menu-close { display: none; margin-right:-110px;}
 
 @media (max-width: 900px) {
     #navbar {
         top: 0; left: 0; transform: none;
         width: 100%; border-radius: 0;
         height: 60px; padding: 0 20px;
+    }
+    .full-logo{
+        margin-left: -170px;
     }
 
     .nav-wrapper {
