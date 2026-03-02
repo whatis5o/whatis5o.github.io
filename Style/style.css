@@ -170,7 +170,7 @@
 
 .menu-open, .menu-close { display: none;}
 
-.menu-open, .menu-close { display: none; margin-right:-160px;}
+.menu-open, .menu-close { display: none;}
 
 
 @media (max-width: 900px) {
