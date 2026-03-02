@@ -830,14 +830,33 @@ function applyRoleToUI(role) {
         hide('users');
         hide('promotions');
         hide('events');
-        // Relabel stat cards for owner
-        const userLbl = document.querySelector('#totalUsers')?.closest('.stat-card')?.querySelector('.stat-label, .stat-lbl, p, [class*=label]');
-        if (userLbl) userLbl.textContent = 'Total Clients';
-        const revLbl = document.querySelector('#totalRevenue')?.closest('.stat-card')?.querySelector('.stat-label, .stat-lbl, p, [class*=label]');
+
+        // Relabel stat cards for owner context
+        // Try multiple selector strategies to find the label element
+        const userCard = document.querySelector('#totalUsers')?.closest('.stat-card, [class*=stat], [class*=card]');
+        if (userCard) {
+            const lbl = userCard.querySelector('.stat-label, .stat-lbl, label, p, small, span:not(#totalUsers)');
+            if (lbl) lbl.textContent = 'Total Clients';
+            // Also try direct next sibling / parent text nodes
+        }
+        // Fallback: brute-force find any element containing "Total Users" text
+        document.querySelectorAll('.stat-label, .stat-lbl, [class*=label]').forEach(el => {
+            if (el.textContent.trim().toLowerCase() === 'total users') el.textContent = 'Total Clients';
+        });
+
+        const revLbl = document.querySelector('#totalRevenue')?.closest('.stat-card, [class*=stat], [class*=card]')
+            ?.querySelector('.stat-label, .stat-lbl, p, label, small, span:not(#totalRevenue)');
         if (revLbl) revLbl.textContent = 'My Revenue';
-        
+
+        // Hide the "New Listings" pending widget — only admins need it
+        setTimeout(() => {
+            const pendingWrap = document.getElementById('dashPendingListings')
+                ?.closest('.data-section, [class*=section]');
+            if (pendingWrap) pendingWrap.style.display = 'none';
+        }, 100);
+
         if (createListingBtn) createListingBtn.style.display = '';
-        
+
         if (quickMenu) {
             quickMenu.querySelectorAll('button').forEach(b => {
                 const txt = b.innerText.toLowerCase();
@@ -987,8 +1006,8 @@ async function loadAllCountsAndTables() {
     if (CURRENT_ROLE === 'admin') {
         loadListingRequests();
     }
-    // Admin & Owner: pending listings widget in dashboard tab
-    if (CURRENT_ROLE === 'admin' || CURRENT_ROLE === 'owner') {
+    // Admin only: pending listings widget in dashboard tab
+    if (CURRENT_ROLE === 'admin') {
         loadDashPendingListings();
     }
     console.log("✅ [DATA] All data loaded");
@@ -1595,7 +1614,7 @@ async function toggleListingAvailability(listingId, current) {
 
 async function approveBooking(bookingId) {
     console.log("✅ [ACTION] Approving booking:", bookingId);
-    if (!confirm('Approve this booking? The guest will be notified by email with a receipt.')) return;
+    if (!confirm('Approve this booking? The guest will be notified.')) return;
 
     toast('Approving booking...', 'info');
 
@@ -1607,35 +1626,32 @@ async function approveBooking(bookingId) {
             .eq('id', bookingId);
         if (error) throw error;
 
-        // 2. Email booker via EmailJS
-        try {
-            // Fetch all details needed for the email
-            const { data: booking }  = await _supabase.from('bookings').select('*').eq('id', bookingId).single();
-            const { data: listing }  = await _supabase.from('listings').select('title,price,currency,address,province_id,district_id,owner_id').eq('id', booking.listing_id).single();
-            const { data: booker }   = await _supabase.from('profiles').select('full_name,email').eq('id', booking.user_id).single();
-            const { data: owner }    = await _supabase.from('profiles').select('full_name,email,phone').eq('id', listing?.owner_id).single();
+        // 2. Fetch all details needed for the emails
+        const { data: booking }  = await _supabase.from('bookings').select('*').eq('id', bookingId).single();
+        const { data: listing }  = await _supabase.from('listings').select('title,price,currency,address,province_id,district_id,owner_id').eq('id', booking.listing_id).single();
+        const { data: booker }   = await _supabase.from('profiles').select('full_name,email').eq('id', booking.user_id).single();
+        const { data: owner }    = await _supabase.from('profiles').select('full_name,email,phone').eq('id', listing?.owner_id).single();
 
-            // Resolve location
-            let location = listing?.address || 'Rwanda';
-            if (listing?.district_id || listing?.province_id) {
-                const [{ data: dist }, { data: prov }] = await Promise.all([
-                    listing?.district_id ? _supabase.from('districts').select('name').eq('id', listing.district_id).single() : { data: null },
-                    listing?.province_id ? _supabase.from('provinces').select('name').eq('id', listing.province_id).single() : { data: null },
-                ]);
-                location = [dist?.name, prov?.name].filter(Boolean).join(', ') || location;
-            }
+        let location = listing?.address || 'Rwanda';
+        if (listing?.district_id || listing?.province_id) {
+            const [{ data: dist }, { data: prov }] = await Promise.all([
+                listing?.district_id ? _supabase.from('districts').select('name').eq('id', listing.district_id).single() : { data: null },
+                listing?.province_id ? _supabase.from('provinces').select('name').eq('id', listing.province_id).single() : { data: null },
+            ]);
+            location = [dist?.name, prov?.name].filter(Boolean).join(', ') || location;
+        }
 
-            const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
-            const nights = Math.ceil((new Date(booking.end_date) - new Date(booking.start_date)) / 86400000);
-            const payLabel = (booking.payment_method || '').replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
-            const currency = listing?.currency || 'RWF';
-            const receiptNo = 'RCP-' + booking.id.substring(0,8).toUpperCase();
-            const issuedDate = new Date().toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+        const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+        const nights = Math.ceil((new Date(booking.end_date) - new Date(booking.start_date)) / 86400000);
+        const currency = listing?.currency || 'RWF';
+        const isCash = booking.payment_method === 'cash' || booking.payment_method === 'pay_on_arrival';
 
-            if (booker?.email && window.emailjs) {
+        if (booker?.email && window.emailjs) {
+            if (isCash) {
+                // ── PATH A: PAY ON ARRIVAL (Send Receipt Immediately) ──
                 await emailjs.send(
                     EMAILJS_CONFIG.SERVICE_ID,
-                    EMAILJS_CONFIG.TEMPLATE_BOOKING_APPROVED,
+                    EMAILJS_CONFIG.TEMPLATE_BOOKING_APPROVED, // Your existing template
                     {
                         to_email:        booker.email,
                         booker_name:     booker.full_name || 'Guest',
@@ -1643,30 +1659,40 @@ async function approveBooking(bookingId) {
                         location,
                         check_in:        fmt(booking.start_date),
                         check_out:       fmt(booking.end_date),
-                        nights:          nights + ' night' + (nights !== 1 ? 's' : ''),
-                        price_per_night: Number(listing?.price || 0).toLocaleString('en-RW') + ' ' + currency,
-                        payment_method:  payLabel,
                         total:           Number(booking.total_amount).toLocaleString('en-RW') + ' ' + currency,
-                        receipt_no:      receiptNo,
-                        issued_date:     issuedDate,
+                        payment_method:  'Pay on Arrival',
                         owner_name:      owner?.full_name || 'Host',
-                        owner_email:     owner?.email || '—',
-                        owner_phone:     owner?.phone || '—',
-                        dashboard_url:   window.location.origin + '/Dashboard/',
+                        dashboard_url:   window.location.origin + '/Profile/', // Send them to profile to download PDF
                     },
                     EMAILJS_CONFIG.PUBLIC_KEY
                 );
-                console.log('📧 [APPROVE] Booker email sent to:', booker.email);
+                console.log('📧 Sent "Pay on Arrival" confirmation to:', booker.email);
             } else {
-                console.warn('⚠️ [APPROVE] EmailJS not ready or booker email missing');
+                // ── PATH B: DIGITAL PAYMENT (Send "Please Pay" Link) ──
+                // You will need to create a new EmailJS template for this!
+                const paymentLink = `${window.location.origin}/Checkout/Pay/?booking_id=${booking.id}`;
+                
+                await emailjs.send(
+                    EMAILJS_CONFIG.SERVICE_ID,
+                    'template_PAYMENT_REQUIRED', // REPLACE THIS with a new EmailJS Template ID
+                    {
+                        to_email:        booker.email,
+                        booker_name:     booker.full_name || 'Guest',
+                        listing_title:   listing?.title || '—',
+                        total:           Number(booking.total_amount).toLocaleString('en-RW') + ' ' + currency,
+                        payment_link:    paymentLink, // The crucial link!
+                    },
+                    EMAILJS_CONFIG.PUBLIC_KEY
+                );
+                console.log('📧 Sent "Action Required: Pay Now" link to:', booker.email);
             }
-        } catch (emailErr) {
-            console.warn('⚠️ [APPROVE] Email failed (non-blocking):', emailErr.message || emailErr);
         }
 
-        toast('✅ Booking approved! Guest has been notified by email.', 'success');
+        toast('✅ Booking approved! Guest has been notified.', 'success');
         await loadBookingsTable();
         await filterListings();
+        bustListingCache();
+        if (document.getElementById('dashPendingListings')) loadDashPendingListings();
 
     } catch (err) {
         console.error("❌ [ACTION] Error approving booking:", err);

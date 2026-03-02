@@ -167,16 +167,28 @@
 
 
 /* --- MOBILE VIEW --- */
-.menu-open, .menu-close { display: none; margin-right:-110px;}
+
+.menu-open, .menu-close { display: none;}
+
+.menu-open, .menu-close { display: none; margin-right:-160px;}
+
 
 @media (max-width: 900px) {
     #navbar {
         top: 0; left: 0; transform: none;
         width: 100%; border-radius: 0;
         height: 60px; padding: 0 20px;
+        justify-content: space-between;
     }
-    .full-logo{
-        margin-left: -170px;
+    .full-logo {
+        margin-left: 0; /* Reset */
+        margin-top: 0; /* Reset desktop margin so it centers vertically */
+        height: 32px; /* Slightly scaled down to fit the mobile navbar perfectly */
+    }
+    .logo-area {
+        flex: none; /* Stops it from stretching */
+        display: flex;
+        align-items: center;
     }
 
     .nav-wrapper {
@@ -199,6 +211,7 @@
         width: 100%;
         justify-content: flex-start;
         margin: 0;
+        margin-top: -22px;
     }
 
     .nav-links {
@@ -226,7 +239,7 @@
     .menu-open { display: block; font-size: 24px; cursor: pointer; }
     .menu-close {
         display: block;
-        position: absolute; top: 20px; right: 20px;
+        position: relative; top: -60px; right: -200px;
         font-size: 24px; cursor: pointer;
     }
 }

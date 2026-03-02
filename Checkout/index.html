@@ -1,430 +1,746 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout — AfriStay</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root { --primary: #EB6753; --primary-dark: #d45540; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-        body { background: #f7f7f7; min-height: 100vh; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkout — AfriStay</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --red:#EB6753;--red-d:#d04e3b;--red-glow:rgba(235,103,83,.14);
+  --dark:#161616;--mid:#555;--muted:#999;--faint:#c8c8c8;
+  --border:#e8e8e8;--bg:#f4f3f1;--card:#fff;
+  --green:#16a34a;--green-bg:#f0fdf4;--green-bdr:#bbf7d0;
+  --spenn:#6c3fc4;--spenn-bg:#f5f0ff;--spenn-bdr:#d8b4fe;
+  --radius:18px;--sh:0 2px 28px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sora',sans-serif;background:var(--bg);min-height:100vh;color:var(--dark);-webkit-font-smoothing:antialiased}
 
-        /* NAV */
-        #navbar {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; height: 65px; background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px); border-radius: 50px; padding: 0 40px;
-            display: flex; align-items: center; justify-content: space-between;
-            z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        }
-        .logo-text { font-size: 26px; font-weight: 800; color: var(--primary); text-decoration: none; }
-        .back-link { color: #666; text-decoration: none; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: color 0.2s; }
-        .back-link:hover { color: var(--primary); }
+/* NAV */
+#nav{
+  position:fixed;top:14px;left:50%;transform:translateX(-50%);
+  width:92%;max-width:1100px;height:60px;
+  background:rgba(255,255,255,.93);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-radius:100px;padding:0 26px;
+  display:flex;align-items:center;justify-content:space-between;
+  z-index:1000;box-shadow:0 2px 22px rgba(0,0,0,.09);
+}
+.nav-logo{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--red);text-decoration:none}
+.nav-logo img{height:34px;width:auto;display:block}
+.nav-back{display:flex;align-items:center;gap:7px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:600;padding:8px 16px;border-radius:100px;border:1.5px solid var(--border);transition:all .2s}
+.nav-back:hover{color:var(--red);border-color:var(--red);background:var(--red-glow)}
 
-        /* PAGE LAYOUT */
-        .page { max-width: 960px; margin: 0 auto; padding: 110px 20px 60px; display: grid; grid-template-columns: 1fr 380px; gap: 32px; align-items: start; }
+/* PAGE */
+.page{max-width:1020px;margin:0 auto;padding:96px 18px 60px;display:grid;grid-template-columns:1fr 400px;gap:24px;align-items:start}
 
-        /* SUMMARY */
-        .summary-card { background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-        .summary-img { width: 100%; height: 220px; object-fit: cover; display: block; }
-        .summary-img-ph { width:100%; height:220px; background:linear-gradient(135deg,#f5f5f5,#e8e8e8); display:flex; align-items:center; justify-content:center; }
-        .summary-body { padding: 24px; }
-        .summary-body h2 { font-size: 20px; font-weight: 800; color: #1a1a1a; margin-bottom: 20px; line-height: 1.3; }
-        .s-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f5f5f5; font-size:14px; }
-        .s-row:last-child { border:none; }
-        .s-row .lbl { color:#888; display:flex; align-items:center; gap:7px; }
-        .s-row .lbl i { color:var(--primary); width:14px; text-align:center; }
-        .s-row .val { font-weight:700; color:#1a1a1a; }
-        .s-total { display:flex; justify-content:space-between; align-items:center; margin-top:18px; padding-top:18px; border-top:2px solid #f0f0f0; }
-        .s-total .lbl { font-size:15px; font-weight:700; color:#1a1a1a; }
-        .s-total .val { font-size:26px; font-weight:800; color:var(--primary); }
+/* SUMMARY */
+.summary{background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:var(--sh)}
+.s-img{width:100%;height:220px;object-fit:cover;display:block;background:#eee}
+.s-img-ph{width:100%;height:220px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#f3f3f3,#ebebeb)}
+.s-body{padding:22px 24px 26px}
+.s-name{font-family:'Playfair Display',serif;font-size:19px;line-height:1.35;margin-bottom:18px;color:var(--dark)}
+.s-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.s-row:last-child{border:none}
+.s-lbl{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.s-lbl i{color:var(--red);font-size:11px;width:13px;text-align:center}
+.s-val{font-size:13px;font-weight:700;color:var(--dark)}
+.s-divider{border:none;border-top:2px dashed var(--border);margin:8px 0}
+.s-total-row{display:flex;justify-content:space-between;align-items:center;padding-top:16px;margin-top:4px}
+.s-total-lbl{font-size:14px;font-weight:700}
+.s-total-val{font-size:32px;font-weight:800;color:var(--red);letter-spacing:-1.5px}
+.s-cur{font-size:13px;font-weight:600;color:var(--faint);margin-left:3px}
 
-        /* PAY CARD */
-        .pay-card { background:#fff; border-radius:20px; padding:28px; box-shadow:0 4px 24px rgba(0,0,0,0.08); position:sticky; top:100px; }
-        .pay-card h3 { font-size:18px; font-weight:800; color:#1a1a1a; margin-bottom:4px; }
-        .pay-card .sub { font-size:13px; color:#aaa; margin-bottom:22px; }
+/* PAY CARD */
+.pay-card{background:var(--card);border-radius:var(--radius);padding:26px;box-shadow:var(--sh);position:sticky;top:90px}
+.pc-h{font-size:17px;font-weight:800;color:var(--dark);margin-bottom:3px}
+.pc-sub{font-size:12px;color:var(--faint);margin-bottom:22px}
 
-        /* FORM */
-        .fg { margin-bottom:14px; }
-        .fg label { display:block; font-size:11px; font-weight:700; color:#999; margin-bottom:5px; text-transform:uppercase; letter-spacing:0.5px; }
-        .fg input { width:100%; padding:12px 14px; border:1.5px solid #e8e8e8; border-radius:10px; font-size:14px; outline:none; transition:all 0.2s; font-family:'Inter',sans-serif; background:#fff; }
-        .fg input:focus { border-color:var(--primary); box-shadow:0 0 0 4px rgba(235,103,83,0.08); }
+/* METHOD TABS — 4 options */
+.methods{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:22px}
+.m-tab{
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  padding:12px 4px;border:2px solid var(--border);border-radius:13px;
+  cursor:pointer;transition:all .2s;background:#fcfcfc;position:relative;text-align:center;
+}
+.m-tab:hover{border-color:var(--red);background:var(--red-glow)}
+.m-tab.on{border-color:var(--red);background:var(--red-glow)}
+.m-tab.on::after{content:'';position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--red)}
+.m-tab i{font-size:18px;color:var(--faint);transition:color .2s}
+.m-tab:hover i,.m-tab.on i{color:var(--red)}
+.m-tab span{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;line-height:1.3;transition:color .2s}
+.m-tab:hover span,.m-tab.on span{color:var(--red)}
 
-        /* BADGES */
-        .badges { display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
-        .badge { display:flex; align-items:center; gap:4px; font-size:11px; color:#666; background:#f5f5f5; padding:5px 10px; border-radius:20px; }
-        .badge i { color:#2ecc71; }
+/* PANELS */
+.panel{display:none}
+.panel.on{display:block}
 
-        /* PAY BUTTON */
-        .pay-btn { width:100%; padding:16px; background:var(--primary); color:#fff; border:none; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; transition:all 0.3s; }
-        .pay-btn:hover:not(:disabled) { background:var(--primary-dark); transform:translateY(-2px); box-shadow:0 8px 24px rgba(235,103,83,0.35); }
-        .pay-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none; }
+/* FORM */
+.fg{margin-bottom:13px}
+.fg label{display:block;font-size:11px;font-weight:700;color:#bbb;margin-bottom:5px;text-transform:uppercase;letter-spacing:.6px}
+.fg input,.fg select{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:11px;font-size:14px;outline:none;background:var(--card);color:var(--dark);transition:all .2s;font-family:'Sora',sans-serif}
+.fg input:focus,.fg select:focus{border-color:var(--red);box-shadow:0 0 0 4px var(--red-glow)}
+.fg input::placeholder{color:#d8d8d8}
 
-        .powered { text-align:center; margin-top:14px; font-size:12px; color:#bbb; }
+/* CARD PANEL */
+.card-brands{display:flex;align-items:center;gap:7px;margin-bottom:13px;flex-wrap:wrap}
+.brand{height:26px;border-radius:5px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;padding:0 7px;font-size:11px;font-weight:800;letter-spacing:.3px}
+.brand.visa{background:#1a1f71;color:#fff;font-style:italic;font-size:13px;padding:0 9px}
+.brand.amex{background:#006fcf;color:#fff;font-size:10px;letter-spacing:.5px;padding:0 6px}
+.brand.verve-b{background:linear-gradient(135deg,#e63946,#c1121f);color:#fff}
 
-        /* ERROR */
-        .err { background:#fde8e8; border:1.5px solid #f5c6c6; border-radius:10px; padding:12px 16px; font-size:13px; color:#c0392b; margin-bottom:14px; display:none; align-items:center; gap:8px; }
+/* MOMO PANEL */
+.nets{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+.net{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border:2px solid var(--border);border-radius:11px;cursor:pointer;transition:all .2s;font-size:13px;font-weight:700;color:var(--mid);background:#fcfcfc}
+.net:hover,.net.on{border-color:var(--red);background:var(--red-glow);color:var(--red)}
+.dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.mtn-dot{background:#FFCC00;box-shadow:0 0 0 1px rgba(0,0,0,.1)}
+.air-dot{background:#E40000}
 
-        /* SUCCESS */
-        #successView { display:none; max-width:560px; margin:120px auto 60px; background:#fff; border-radius:20px; box-shadow:0 4px 24px rgba(0,0,0,0.08); padding:48px 32px; text-align:center; }
-        .suc-icon { font-size:64px; color:#2ecc71; margin-bottom:20px; }
-        #successView h2 { font-size:26px; font-weight:800; color:#1a1a1a; margin-bottom:8px; }
-        #successView p { font-size:15px; color:#666; margin-bottom:20px; }
-        .suc-ref { background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:12px 18px; font-size:13px; color:#166534; font-weight:700; margin-bottom:24px; }
-        .btn-ol { display:inline-flex; align-items:center; gap:8px; padding:12px 22px; border:2px solid var(--primary); color:var(--primary); border-radius:12px; font-size:14px; font-weight:700; text-decoration:none; margin:4px; transition:all 0.2s; }
-        .btn-ol:hover { background:var(--primary); color:#fff; }
+/* Phone +250 prefix */
+.ph-wrap{position:relative;display:flex}
+.ph-pre{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding:0 12px;font-size:14px;font-weight:700;color:var(--dark);border-right:1.5px solid var(--border);pointer-events:none;z-index:1;gap:5px;white-space:nowrap}
+.ph-wrap input{padding-left:95px}
 
-        /* SKELETON */
-        .skel { background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%); background-size:200%; animation:sh 1.4s infinite; border-radius:8px; color:transparent!important; }
-        @keyframes sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+/* USSD info */
+.ussd-box{background:#fff9f7;border:1.5px solid #fdd5c4;border-radius:11px;padding:12px 14px;font-size:12px;color:#9a3412;line-height:1.7;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start}
+.ussd-box i{color:var(--red);flex-shrink:0;margin-top:2px}
 
-        @media (max-width:760px) {
-            .page { grid-template-columns:1fr; padding-top:90px; }
-            .pay-card { position:static; }
-            #navbar { top:0; left:0; transform:none; width:100%; border-radius:0; padding:0 20px; justify-content:space-between; }
-        }
-    </style>
+/* SPENN PANEL */
+.spenn-box{background:var(--spenn-bg);border:1.5px solid var(--spenn-bdr);border-radius:13px;padding:18px;margin-bottom:14px}
+.spenn-box h4{font-size:14px;font-weight:800;color:var(--spenn);margin-bottom:9px;display:flex;align-items:center;gap:8px}
+.spenn-box p{font-size:13px;color:#4b2099;line-height:1.65}
+.spenn-logo{font-size:22px;font-weight:900;color:var(--spenn);letter-spacing:-0.5px}
+
+/* ARRIVAL PANEL */
+.arrival-box{background:var(--green-bg);border:1.5px solid var(--green-bdr);border-radius:13px;padding:18px;margin-bottom:14px}
+.arrival-box h4{font-size:14px;font-weight:800;color:var(--green);margin-bottom:11px;display:flex;align-items:center;gap:8px}
+.steps{list-style:none;display:flex;flex-direction:column;gap:8px}
+.steps li{font-size:13px;color:#166534;display:flex;align-items:flex-start;gap:9px;line-height:1.5}
+.step-n{width:20px;height:20px;border-radius:50%;background:var(--green);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.arrival-warn{font-size:12px;color:var(--muted);line-height:1.65}
+
+/* GUEST SECTION */
+.g-sep{border:none;border-top:1.5px solid var(--border);margin:16px 0 14px}
+.g-label{font-size:11px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.6px;margin-bottom:13px}
+
+/* ERROR */
+.err{display:none;align-items:flex-start;gap:10px;background:#fff0f0;border:1.5px solid #fcc;border-radius:11px;padding:12px 14px;font-size:13px;color:#c0392b;margin-bottom:14px}
+.err i{flex-shrink:0;margin-top:1px}
+
+/* REDIRECT NOTICE */
+.redirect-note{display:none;align-items:center;gap:10px;background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:11px;padding:12px 14px;font-size:13px;color:#0369a1;margin-bottom:14px}
+.redirect-note i{flex-shrink:0;color:#0284c7}
+
+/* PAY BUTTON */
+.pay-btn{width:100%;padding:15px;border:none;border-radius:13px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Sora',sans-serif;display:flex;align-items:center;justify-content:center;gap:9px;transition:all .25s;margin-top:18px;background:var(--red);color:#fff}
+.pay-btn:hover:not(:disabled){background:var(--red-d);transform:translateY(-2px);box-shadow:0 8px 28px rgba(235,103,83,.38)}
+.pay-btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+.pay-btn.g{background:var(--green)}
+.pay-btn.g:hover:not(:disabled){background:#15803d;box-shadow:0 8px 28px rgba(22,163,74,.32)}
+
+.lock-line{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;font-size:11px;color:var(--faint)}
+.lock-line i{color:var(--green);font-size:10px}
+
+/* SKELETON */
+.skel{background:linear-gradient(90deg,#f0f0f0 25%,#e6e6e6 50%,#f0f0f0 75%);background-size:200%;animation:sk 1.4s infinite;border-radius:8px;color:transparent!important;user-select:none}
+@keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+@media(max-width:760px){
+  .page{grid-template-columns:1fr;padding-top:86px}
+  .pay-card{position:static}
+  #nav{top:0;left:0;transform:none;width:100%;border-radius:0;padding:0 16px}
+  .methods{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:380px){.nets{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 
-<nav id="navbar">
-    <a href="/" class="logo-text">AfriStay</a>
-    <a href="javascript:history.back()" class="back-link">
-        <i class="fa-solid fa-arrow-left"></i> Back to Listing
-    </a>
+<nav id="nav">
+  <a href="/" class="nav-logo">
+    <img src="/Pictures/light-afri1.png" alt="AfriStay"
+         onerror="this.outerHTML='<span class=\'nav-logo\'>AfriStay</span>'">
+  </a>
+  <a href="javascript:history.back()" class="nav-back">
+    <i class="fa-solid fa-arrow-left"></i> Back to listing
+  </a>
 </nav>
 
-<!-- MAIN CHECKOUT PAGE -->
 <div class="page" id="mainPage">
 
-    <!-- Booking summary -->
-    <div class="summary-card">
-        <div id="summaryImg" class="summary-img-ph">
-            <i class="fa-solid fa-image" style="font-size:40px;color:#ccc;"></i>
-        </div>
-        <div class="summary-body">
-            <h2 id="summaryTitle" class="skel" style="height:26px;width:68%;">&nbsp;</h2>
+  <!-- LEFT: Booking Summary -->
+  <div class="summary">
+    <div id="sImgWrap" class="s-img-ph">
+      <i class="fa-solid fa-image" style="font-size:42px;color:#d5d5d5"></i>
+    </div>
+    <div class="s-body">
+      <div id="sTitle" class="s-name skel" style="height:22px;width:74%;margin-bottom:20px">&nbsp;</div>
+      <div class="s-row">
+        <span class="s-lbl"><i class="fa-solid fa-calendar-check"></i>Check-in</span>
+        <span class="s-val" id="sIn">—</span>
+      </div>
+      <div class="s-row">
+        <span class="s-lbl"><i class="fa-solid fa-calendar-xmark"></i>Check-out</span>
+        <span class="s-val" id="sOut">—</span>
+      </div>
+      <div class="s-row">
+        <span class="s-lbl"><i class="fa-solid fa-moon"></i>Duration</span>
+        <span class="s-val" id="sNights">—</span>
+      </div>
+      <div class="s-row">
+        <span class="s-lbl"><i class="fa-solid fa-tag"></i>Per night</span>
+        <span class="s-val" id="sRate">—</span>
+      </div>
+      <hr class="s-divider">
+      <div class="s-total-row">
+        <span class="s-total-lbl">Total</span>
+        <span class="s-total-val" id="sTotal">—<span class="s-cur" id="sCur"> RWF</span></span>
+      </div>
+    </div>
+  </div>
 
-            <div class="s-row">
-                <span class="lbl"><i class="fa-solid fa-calendar-check"></i> Check-in</span>
-                <span class="val" id="sCheckIn">—</span>
-            </div>
-            <div class="s-row">
-                <span class="lbl"><i class="fa-solid fa-calendar-xmark"></i> Check-out</span>
-                <span class="val" id="sCheckOut">—</span>
-            </div>
-            <div class="s-row">
-                <span class="lbl"><i class="fa-solid fa-moon"></i> Duration</span>
-                <span class="val" id="sNights">—</span>
-            </div>
-            <div class="s-row">
-                <span class="lbl"><i class="fa-solid fa-tag"></i> Nightly rate</span>
-                <span class="val" id="sRate">—</span>
-            </div>
+  <!-- RIGHT: Payment -->
+  <div class="pay-card">
+    <div class="pc-h">How would you like to pay?</div>
+    <div class="pc-sub">Payments powered by K-Pay · ISO 27001 &amp; PCI-DSS Certified</div>
 
-            <div class="s-total">
-                <span class="lbl">Total Amount</span>
-                <span class="val" id="sTotal">—</span>
-            </div>
-        </div>
+    <div class="methods">
+      <div class="m-tab on" id="tab-card" onclick="switchMethod('card')">
+        <i class="fa-solid fa-credit-card"></i><span>Card</span>
+      </div>
+      <div class="m-tab" id="tab-momo" onclick="switchMethod('momo')">
+        <i class="fa-solid fa-mobile-screen-button"></i><span>Mobile Money</span>
+      </div>
+      <div class="m-tab" id="tab-spenn" onclick="switchMethod('spenn')">
+        <i class="fa-solid fa-wallet"></i><span>SPENN</span>
+      </div>
+      <div class="m-tab" id="tab-arrival" onclick="switchMethod('arrival')">
+        <i class="fa-solid fa-house-circle-check"></i><span>Pay on Arrival</span>
+      </div>
     </div>
 
-    <!-- Payment form -->
-    <div class="pay-card">
-        <h3>Pay &amp; Confirm</h3>
-        <p class="sub">Secured by Flutterwave · MTN MoMo, Airtel, Card</p>
-
-        <div class="err" id="errBanner">
-            <i class="fa-solid fa-circle-exclamation"></i>
-            <span id="errMsg">Something went wrong.</span>
-        </div>
-
-        <div class="fg">
-            <label>Full Name *</label>
-            <input type="text" id="gName" placeholder="e.g. Amahoro Jean" autocomplete="name">
-        </div>
-        <div class="fg">
-            <label>Email Address *</label>
-            <input type="email" id="gEmail" placeholder="you@example.com" autocomplete="email">
-        </div>
-        <div class="fg">
-            <label>Phone Number *</label>
-            <input type="tel" id="gPhone" placeholder="+250 78X XXX XXX" autocomplete="tel">
-        </div>
-
-        <div class="badges">
-            <div class="badge"><i class="fa-solid fa-lock"></i> SSL Encrypted</div>
-            <div class="badge"><i class="fa-solid fa-shield-halved"></i> 3D Secure</div>
-            <div class="badge"><i class="fa-solid fa-circle-check"></i> MTN &amp; Airtel MoMo</div>
-        </div>
-
-        <button class="pay-btn" id="payBtn" onclick="initiatePayment()">
-            <i class="fa-solid fa-credit-card"></i>
-            <span id="payBtnLabel">Pay Now</span>
-        </button>
-
-        <div class="powered">🔒 Powered by Flutterwave — PCI DSS Level 1 Certified</div>
+    <!-- Error -->
+    <div class="err" id="errBox">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <span id="errMsg">Something went wrong.</span>
     </div>
+    <!-- Redirect notice -->
+    <div class="redirect-note" id="redirectNote">
+      <i class="fa-solid fa-circle-notch fa-spin"></i>
+      <span>Redirecting you to K-Pay secure checkout…</span>
+    </div>
+
+    <!-- ════ CARD PANEL ════ -->
+    <div class="panel on" id="panel-card">
+      <div class="card-brands">
+        <div class="brand visa">VISA</div>
+        <!-- Mastercard SVG -->
+        <div class="brand" style="background:#fff;padding:3px 5px">
+          <svg width="36" height="22" viewBox="0 0 36 22" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="13" cy="11" r="10" fill="#EB001B"/>
+            <circle cx="23" cy="11" r="10" fill="#F79E1B"/>
+            <path d="M18 4.4a10 10 0 0 1 0 13.2A10 10 0 0 1 18 4.4z" fill="#FF5F00"/>
+          </svg>
+        </div>
+        <div class="brand amex">AMEX</div>
+        <div class="brand verve-b">VERVE</div>
+      </div>
+      <p style="font-size:12px;color:var(--faint);line-height:1.65">
+        You'll be redirected to K-Pay's secure hosted checkout to enter your card details. 
+        No card information is stored on AfriStay.
+      </p>
+    </div>
+
+    <!-- ════ MOBILE MONEY PANEL ════ -->
+    <div class="panel" id="panel-momo">
+      <div class="fg">
+        <label>Select Network</label>
+        <div class="nets">
+          <div class="net on" id="net-mtn" onclick="pickNet('mtn')">
+            <span class="dot mtn-dot"></span> MTN MoMo
+          </div>
+          <div class="net" id="net-air" onclick="pickNet('airtel')">
+            <span class="dot air-dot"></span> Airtel Money
+          </div>
+        </div>
+      </div>
+      <div class="fg">
+        <label>MoMo Phone Number</label>
+        <div class="ph-wrap">
+          <span class="ph-pre"><span style="font-size:17px">🇷🇼</span> +250</span>
+          <input type="tel" id="momoPhone" placeholder="78X XXX XXX" maxlength="9"
+                 inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')">
+        </div>
+      </div>
+      <div class="ussd-box">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>
+          You'll be redirected to K-Pay. They'll send a 
+          <strong>USSD prompt to your phone</strong> — approve it and enter your MoMo PIN to confirm payment.
+          Make sure your MoMo number has enough balance before proceeding.
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ SPENN PANEL ════ -->
+    <div class="panel" id="panel-spenn">
+      <div class="spenn-box">
+        <h4><i class="fa-solid fa-wallet"></i> Pay with SPENN Wallet</h4>
+        <p>
+          You'll be redirected to K-Pay's checkout where you can complete payment 
+          using your SPENN wallet. Make sure the SPENN app is installed and your account is funded.
+        </p>
+      </div>
+    </div>
+
+    <!-- ════ PAY ON ARRIVAL PANEL ════ -->
+    <div class="panel" id="panel-arrival">
+      <div class="arrival-box">
+        <h4><i class="fa-solid fa-handshake"></i> How Pay on Arrival Works</h4>
+        <ul class="steps">
+          <li><span class="step-n">1</span>Your booking is reserved right now — no charge</li>
+          <li><span class="step-n">2</span>Host reviews and confirms within a few hours</li>
+          <li><span class="step-n">3</span>You pay the host in cash when you arrive</li>
+          <li><span class="step-n">4</span>Free cancellation up to 24h before check-in</li>
+        </ul>
+      </div>
+      <p class="arrival-warn">⚠️ Hosts may prioritise paid bookings during busy periods. Online payment guarantees your reservation.</p>
+    </div>
+
+    <!-- ════ GUEST DETAILS (all methods) ════ -->
+    <hr class="g-sep">
+    <div class="g-label">Your details</div>
+
+    <div class="fg">
+      <label>Full Name *</label>
+      <input type="text" id="gName" placeholder="e.g. Amahoro Jean" autocomplete="name">
+    </div>
+    <div class="fg">
+      <label>Email Address *</label>
+      <input type="email" id="gEmail" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="fg">
+      <label>Your Phone *</label>
+      <div class="ph-wrap">
+        <span class="ph-pre"><span style="font-size:17px">🇷🇼</span> +250</span>
+        <input type="tel" id="gPhone" placeholder="78X XXX XXX" maxlength="9"
+               inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')">
+      </div>
+    </div>
+
+    <button class="pay-btn" id="payBtn" onclick="pay()">
+      <i id="payIcon" class="fa-solid fa-credit-card"></i>
+      <span id="payLabel">Pay Now</span>
+    </button>
+    <div class="lock-line">
+      <i class="fa-solid fa-shield-halved"></i>
+      <span id="lockLabel">K-Pay · ISO/IEC 27001 &amp; PCI-DSS Certified · Rwanda</span>
+    </div>
+  </div>
 </div>
 
-<!-- SUCCESS VIEW -->
-<div id="successView">
-    <div class="suc-icon"><i class="fa-solid fa-circle-check"></i></div>
-    <h2>Booking Confirmed! 🎉</h2>
-    <p>Your payment was received. The host will reach out to confirm your stay details.</p>
-    <div class="suc-ref" id="sucRef"></div>
-    <div>
-        <a href="/Dashboard" class="btn-ol"><i class="fa-solid fa-gauge"></i> My Bookings</a>
-        <a href="/Listings" class="btn-ol"><i class="fa-solid fa-magnifying-glass"></i> Explore More</a>
-    </div>
-</div>
-
-
-<!-- ══════════════════════════════════════════════════════════
-     FLUTTERWAVE INLINE JS — loads the payment popup
-     Public key is safe to expose in frontend code.
-     Secret key lives only in the Edge Function (verify-payment).
-     ══════════════════════════════════════════════════════════ -->
-<script src="https://checkout.flutterwave.com/v3.js"></script>
+<!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/config.js"></script>
-
 <script>
-/* ─────────────────────────────────────────────────────────────
-   !! REPLACE THIS with your actual Flutterwave PUBLIC key
-   Get it from: https://dashboard.flutterwave.com/settings/apis
-   Test key starts with:  FLWPUBK_TEST-
-   Live key starts with:  FLWPUBK-
-   ───────────────────────────────────────────────────────────── */
-const FLW_PUBLIC_KEY = 'FLWPUBK_TEST-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-X';
+/*
+╔══════════════════════════════════════════════════════════════════════╗
+║  AfriStay Checkout — K-Pay Integration                              ║
+║                                                                      ║
+║  FLOW (very different from Flutterwave):                             ║
+║  1. User fills form → clicks Pay                                     ║
+║  2. We create a PENDING booking in Supabase                          ║
+║  3. We call our Edge Function (create-kpay-payment)                  ║
+║  4. Edge Function calls K-Pay API with your credentials              ║
+║  5. K-Pay returns a checkout URL                                     ║
+║  6. We redirect user to K-Pay's hosted payment page                  ║
+║  7. User pays (card/MoMo USSD/SPENN) on K-Pay's page                ║
+║  8. K-Pay POSTs to our webhook (kpay-webhook) → updates booking      ║
+║  9. K-Pay redirects user to /Checkout/result/?ref=REFID              ║
+║                                                                      ║
+║  SETUP — set these Edge Function secrets:                            ║
+║    supabase secrets set KPAY_KEY=your_api_key                        ║
+║    supabase secrets set KPAY_USERNAME=your_username                  ║
+║    supabase secrets set KPAY_PASSWORD=your_password                  ║
+║    supabase secrets set KPAY_RETAILER_ID=your_retailer_id            ║
+║    supabase secrets set SUPABASE_SERVICE_KEY=service_role_key        ║
+╚══════════════════════════════════════════════════════════════════════╝
+*/
 
-// ── Parse booking params from URL ──
+/* ── Parse URL params from detail.js goToCheckout() ── */
 const P       = new URLSearchParams(window.location.search);
 const LISTING = P.get('listing_id') || '';
-const TITLE   = P.get('title')      || 'AfriStay Listing';
+const TITLE   = P.get('title')      || 'AfriStay Booking';
 const S_DATE  = P.get('start_date') || '';
 const E_DATE  = P.get('end_date')   || '';
 const NIGHTS  = parseInt(P.get('nights') || '1', 10);
 const PRICE   = Number(P.get('price')  || 0);
 const CUR     = P.get('currency')   || 'RWF';
-const TOTAL   = Number(P.get('total') || 0);
+const TOTAL   = Number(P.get('total')  || 0);
 
-// ── Helpers ──
-function fmtDate(d) {
-    if (!d) return '—';
-    return new Date(d + 'T00:00:00').toLocaleDateString('en-US', {
-        weekday:'short', month:'short', day:'numeric', year:'numeric'
-    });
-}
-function fmtMoney(n) { return Number(n).toLocaleString('en-RW') + ' ' + CUR; }
-function setText(id, v) { const e = document.getElementById(id); if (e) e.textContent = v; }
-function setVal(id, v)  { const e = document.getElementById(id); if (e) e.value = v; }
-function escH(s) {
-    return String(s||'').replace(/[&<>"']/g, c =>
-        ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
+/* ── State ── */
+let METHOD  = 'card';
+let NETWORK = 'mtn';
 
-// ── Populate summary on load ──
+/* ── Helpers ── */
+const $  = id => document.getElementById(id);
+const tx = (id, v) => { const e=$(id); if(e) e.textContent=v; };
+const vl = (id, v) => { const e=$(id); if(e) e.value=v; };
+const fmt = n => Number(n).toLocaleString('en-RW');
+const fmtDate = d => d ? new Date(d+'T00:00:00').toLocaleDateString('en-US',
+  { weekday:'short',month:'short',day:'numeric',year:'numeric' }) : '—';
+const esc = s => String(s||'').replace(/[&<>"']/g,
+  c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ── Populate summary ── */
 document.addEventListener('DOMContentLoaded', async () => {
-    const titleEl = document.getElementById('summaryTitle');
-    if (titleEl) { titleEl.textContent = TITLE; titleEl.classList.remove('skel'); }
-    setText('sCheckIn',  fmtDate(S_DATE));
-    setText('sCheckOut', fmtDate(E_DATE));
-    setText('sNights',   NIGHTS + (NIGHTS === 1 ? ' night' : ' nights'));
-    setText('sRate',     fmtMoney(PRICE) + ' / night');
-    setText('sTotal',    fmtMoney(TOTAL));
-    setText('payBtnLabel', 'Pay ' + fmtMoney(TOTAL));
+  console.log('🛒 [CHECKOUT] Page loaded');
+  console.log('🛒 [CHECKOUT] Params:', { LISTING, TITLE, S_DATE, E_DATE, NIGHTS, PRICE, TOTAL, CUR });
 
-    const sb = window.supabaseClient;
+  if (!LISTING) console.error('❌ [CHECKOUT] No listing_id in URL — bookings will fail');
+  if (!TOTAL)   console.warn('⚠️ [CHECKOUT] Total is 0 — check URL params from detail.js');
 
-    // Load listing thumbnail
-    if (sb && LISTING) {
-        const { data: imgs } = await sb.from('listing_images')
-            .select('image_url').eq('listing_id', LISTING).limit(1);
-        if (imgs?.[0]?.image_url) {
-            document.getElementById('summaryImg').innerHTML =
-                '<img src="' + escH(imgs[0].image_url) + '" class="summary-img" alt="' + escH(TITLE) + '" loading="eager">';
-        }
+  const tEl = $('sTitle');
+  if (tEl) { tEl.textContent = TITLE; tEl.classList.remove('skel'); }
+  tx('sIn',     fmtDate(S_DATE));
+  tx('sOut',    fmtDate(E_DATE));
+  tx('sNights', NIGHTS+(NIGHTS===1?' night':' nights'));
+  tx('sRate',   fmt(PRICE)+' RWF / night');
+  tx('sTotal',  fmt(TOTAL));
+  tx('sCur',    ' '+CUR);
+  refreshBtn();
+
+  const sb = window.supabaseClient;
+  if (!sb) console.error('❌ [CHECKOUT] supabaseClient not found — check config.js is loaded');
+
+  /* Load thumbnail */
+  if (sb && LISTING) {
+    const { data: imgs, error: imgErr } = await sb.from('listing_images')
+      .select('image_url').eq('listing_id', LISTING).limit(1);
+    if (imgErr) console.warn('[CHECKOUT] Image load failed:', imgErr.message);
+    if (imgs?.[0]?.image_url) {
+      $('sImgWrap').innerHTML =
+        '<img src="'+esc(imgs[0].image_url)+'" class="s-img" alt="'+esc(TITLE)+'" loading="eager">';
+      console.log('🖼️ [CHECKOUT] Listing image loaded');
+    } else {
+      console.log('ℹ️ [CHECKOUT] No image found for listing:', LISTING);
     }
+  }
 
-    // Pre-fill form from auth profile
-    if (sb) {
-        const { data: { user } } = await sb.auth.getUser().catch(() => ({ data: {} }));
-        if (user) {
-            const { data: prof } = await sb.from('profiles')
-                .select('full_name,email,phone').eq('id', user.id).single();
-            setVal('gName',  prof?.full_name || '');
-            setVal('gEmail', prof?.email     || user.email || '');
-            setVal('gPhone', prof?.phone     || '');
-        }
+  /* Pre-fill from auth */
+  if (sb) {
+    const { data:{ user } } = await sb.auth.getUser().catch(()=>({data:{}}));
+    if (user) {
+      console.log('👤 [CHECKOUT] Logged in as:', user.email);
+      try {
+        const { data: p, error: pErr } = await sb.from('profiles')
+          .select('full_name,email,phone').eq('id', user.id).single();
+        if (pErr) console.warn('[CHECKOUT] Profile fetch failed:', pErr?.message);
+        vl('gName',  p?.full_name||'');
+        vl('gEmail', p?.email||user.email||'');
+        vl('gPhone', (p?.phone||'').replace(/^\+?250/,'').replace(/\D/g,''));
+        console.log('✅ [CHECKOUT] Form prefilled from profile');
+      } catch(prefillErr) {
+        console.warn('[CHECKOUT] Profile prefill error:', prefillErr);
+        vl('gEmail', user.email||'');
+      }
+    } else {
+      console.log('ℹ️ [CHECKOUT] Not logged in — guest checkout');
     }
+  }
 });
 
-// ── Validate form ──
+/* ── Switch method ── */
+function switchMethod(m) {
+  METHOD = m;
+  console.log('💳 [CHECKOUT] Method switched to:', m);
+  ['card','momo','spenn','arrival'].forEach(x => {
+    $('tab-'+x)?.classList.toggle('on', x===m);
+    $('panel-'+x)?.classList.toggle('on', x===m);
+  });
+  refreshBtn(); hideErr();
+}
+
+/* ── Pick MoMo network ── */
+function pickNet(n) {
+  NETWORK = n;
+  console.log('📶 [CHECKOUT] MoMo network selected:', n);
+  $('net-mtn')?.classList.toggle('on', n==='mtn');
+  $('net-air')?.classList.toggle('on', n==='airtel');
+}
+
+/* ── Refresh button ── */
+function refreshBtn() {
+  const btn = $('payBtn'); if(!btn) return;
+  btn.classList.remove('g');
+  if (METHOD==='card') {
+    tx('payLabel','Pay '+fmt(TOTAL)+' '+CUR+' by Card');
+    $('payIcon').className='fa-solid fa-credit-card';
+    tx('lockLabel','K-Pay · ISO 27001 & PCI-DSS · Redirect to secure checkout');
+  } else if (METHOD==='momo') {
+    tx('payLabel','Pay '+fmt(TOTAL)+' '+CUR+' via MoMo');
+    $('payIcon').className='fa-solid fa-mobile-screen-button';
+    tx('lockLabel','USSD push to your phone · Powered by K-Pay · Rwanda');
+  } else if (METHOD==='spenn') {
+    tx('payLabel','Pay '+fmt(TOTAL)+' '+CUR+' via SPENN');
+    $('payIcon').className='fa-solid fa-wallet';
+    tx('lockLabel','SPENN Wallet · K-Pay Rwanda');
+  } else {
+    btn.classList.add('g');
+    tx('payLabel','Reserve — Pay on Arrival');
+    $('payIcon').className='fa-solid fa-handshake';
+    tx('lockLabel','Free reservation · No payment taken now');
+  }
+}
+
+/* ── Validate ── */
 function validate() {
-    const name  = document.getElementById('gName')?.value.trim();
-    const email = document.getElementById('gEmail')?.value.trim();
-    const phone = document.getElementById('gPhone')?.value.trim();
-    if (!name)                        { showErr('Please enter your full name.');       return null; }
-    if (!email || !email.includes('@')){ showErr('Please enter a valid email.');        return null; }
-    if (!phone)                        { showErr('Please enter your phone number.');    return null; }
-    if (!LISTING)                      { showErr('Invalid session — no listing ID.');   return null; }
-    if (TOTAL <= 0)                    { showErr('Invalid booking amount.');            return null; }
-    return { name, email, phone };
+  const name  = $('gName')?.value.trim()  || '';
+  const email = $('gEmail')?.value.trim() || '';
+  const rawPh = $('gPhone')?.value.trim() || '';
+  console.log('🔍 [CHECKOUT] Validating:', { name: name||'(empty)', email: email||'(empty)', phone: rawPh||'(empty)', LISTING, TOTAL });
+  if (!name)                          { showErr('Please enter your full name.'); return null; }
+  if (!email||!email.includes('@'))   { showErr('Please enter a valid email.'); return null; }
+  if (!rawPh||rawPh.length<8)         { showErr('Please enter your phone (without +250).'); return null; }
+  if (!LISTING)                       { showErr('Session error — go back and try again.'); return null; }
+  if (TOTAL<=0 && METHOD!=='arrival') { showErr('Invalid booking amount.'); return null; }
+  return { name, email, phone: '+250'+rawPh, msisdn: '250'+rawPh };
 }
 
-// ── Trigger Flutterwave popup ──
-function initiatePayment() {
-    hideErr();
-    const form = validate();
-    if (!form) return;
+/* ── Main pay ── */
+async function pay() {
+  hideErr();
+  console.log('🚀 [CHECKOUT] Pay clicked — method:', METHOD, '| total:', TOTAL, CUR, '| listing:', LISTING);
 
-    const btn = document.getElementById('payBtn');
-    btn.disabled = true;
-    setText('payBtnLabel', 'Opening secure payment...');
+  const form = validate();
+  if (!form) { console.warn('[CHECKOUT] Validation failed'); return; }
+  console.log('✅ [CHECKOUT] Validation passed — guest:', form.name, form.email, form.phone);
 
-    // Unique transaction reference — stored with the booking for reconciliation
-    const txRef = 'AFRISTAY-' + Date.now() + '-' + Math.random().toString(36).slice(2,7).toUpperCase();
+  if (METHOD==='arrival') { await doArrival(form); return; }
 
-    FlutterwaveCheckout({
-        public_key:       FLW_PUBLIC_KEY,
-        tx_ref:           txRef,
-        amount:           TOTAL,
-        currency:         CUR,       // 'RWF' for Rwanda
-        country:          'RW',
+  /* Validate MoMo-specific phone */
+  if (METHOD==='momo') {
+    const mp = $('momoPhone')?.value.trim()||'';
+    if (!mp||mp.length<8) { showErr('Enter the MoMo number to receive the USSD prompt.'); return; }
+    form.momoMsisdn = '250'+mp;
+    console.log('📱 [CHECKOUT] MoMo network:', NETWORK, '| phone:', form.momoMsisdn);
+  }
 
-        // Payment options supported in Rwanda
-        payment_options:  'mobilemoney,ussd,card',
+  const btn = $('payBtn');
+  btn.disabled = true;
+  tx('payLabel','Processing...');
 
-        customer: {
-            email:        form.email,
-            phone_number: form.phone,
-            name:         form.name,
-        },
-
-        // Pass booking metadata — accessible in webhook + verification
-        meta: {
-            listing_id: LISTING,
-            start_date: S_DATE,
-            end_date:   E_DATE,
-            nights:     NIGHTS,
-        },
-
-        customizations: {
-            title:       'AfriStay Booking',
-            description: NIGHTS + ' night' + (NIGHTS > 1 ? 's' : '') + ': ' + TITLE,
-            logo:        window.location.origin + '/Pictures/light-afri1.png',
-        },
-
-        onclose() {
-            // User closed without paying
-            btn.disabled = false;
-            setText('payBtnLabel', 'Pay ' + fmtMoney(TOTAL));
-        },
-
-        async callback(data) {
-            console.log('[FLW] Callback status:', data.status, data);
-
-            if (data.status === 'successful' || data.status === 'completed') {
-                setText('payBtnLabel', 'Verifying payment...');
-                await confirmBooking(data, form, txRef);
-            } else {
-                btn.disabled = false;
-                setText('payBtnLabel', 'Pay ' + fmtMoney(TOTAL));
-                showErr('Payment did not complete (status: ' + data.status + '). Try again.');
-            }
-        }
-    });
-}
-
-// ── Verify via Edge Function + create booking ──
-async function confirmBooking(flwData, form, txRef) {
+  try {
+    /* ── Step 1: Get auth user ── */
     const sb = window.supabaseClient;
-
-    try {
-        /* ────────────────────────────────────────────────────────
-           STEP 1: Verify payment server-side
-           The Edge Function calls Flutterwave's API using the SECRET
-           key (never exposed in frontend) and returns { verified: true }
-           ──────────────────────────────────────────────────────── */
-        const res = await fetch(CONFIG.FUNCTIONS_BASE + '/verify-payment', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({
-                transaction_id:    flwData.transaction_id,
-                tx_ref:            txRef,
-                expected_amount:   TOTAL,
-                expected_currency: CUR,
-            })
-        });
-
-        const vData = await res.json();
-        if (!vData.verified) throw new Error(vData.message || 'Verification failed');
-
-        /* ────────────────────────────────────────────────────────
-           STEP 2: Get authenticated user (if logged in)
-           ──────────────────────────────────────────────────────── */
-        let userId = null;
-        if (sb) {
-            const { data: { user } } = await sb.auth.getUser().catch(() => ({ data: {} }));
-            userId = user?.id || null;
-        }
-
-        /* ────────────────────────────────────────────────────────
-           STEP 3: Create booking record in Supabase
-           ──────────────────────────────────────────────────────── */
-        const { data: booking, error } = await sb.from('bookings').insert({
-            listing_id:          LISTING,
-            user_id:             userId,
-            start_date:          S_DATE,
-            end_date:            E_DATE,
-            total_amount:        TOTAL,
-            status:              'confirmed',
-            payment_status:      'paid',
-            payment_method:      'flutterwave',
-            payment_reference:   txRef,
-            flw_transaction_id:  String(flwData.transaction_id),
-            guest_name:          form.name,
-            guest_email:         form.email,
-            guest_phone:         form.phone,
-        }).select('id').single();
-
-        if (error) throw error;
-
-        showSuccess(booking.id, txRef);
-
-    } catch (err) {
-        console.error('[CHECKOUT]', err);
-        showErr('Booking failed: ' + err.message + '. Save ref ' + txRef + ' and contact support.');
-        const btn = document.getElementById('payBtn');
-        if (btn) { btn.disabled = false; setText('payBtnLabel', 'Try Again'); }
+    let uid = null;
+    if (sb) {
+      const { data:{ user } } = await sb.auth.getUser().catch(()=>({data:{}}));
+      uid = user?.id||null;
     }
+    console.log('👤 [CHECKOUT] User ID:', uid || '(not logged in — guest checkout)');
+
+    /* ── Step 2: Generate unique K-Pay reference ── */
+    const refid = 'AS-'+Date.now()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
+    console.log('🔑 [CHECKOUT] Generated refid:', refid);
+
+    /* ── Step 2.5: Check for existing active booking ── */
+    console.log('🔍 [CHECKOUT] Checking for duplicate booking on listing:', LISTING);
+    if (uid) {
+      const { data: dupCheck } = await sb.from('bookings')
+        .select('id, status')
+        .eq('listing_id', LISTING)
+        .eq('user_id', uid)
+        .not('status', 'in', '("cancelled","rejected")')
+        .limit(1);
+      if (dupCheck && dupCheck.length > 0) {
+        console.warn('⚠️ [CHECKOUT] Duplicate blocked — booking:', dupCheck[0].id, 'status:', dupCheck[0].status);
+        throw new Error('You already have an active booking for this listing. Visit your Dashboard to manage it.');
+      }
+    }
+    console.log('✅ [CHECKOUT] No duplicate — proceeding with booking insert');
+
+    /* ── Step 3: Create pending booking in Supabase ── */
+    console.log('💾 [CHECKOUT] Creating pending booking in Supabase...', {
+      listing_id: LISTING, start_date: S_DATE, end_date: E_DATE,
+      total_amount: TOTAL, payment_method: METHOD==='momo' ? ('momo_'+NETWORK) : METHOD,
+    });
+
+    const { data: bk, error: bkErr } = await sb.from('bookings').insert({
+      listing_id:        LISTING,
+      user_id:           uid,
+      start_date:        S_DATE,
+      end_date:          E_DATE,
+      total_amount:      TOTAL,
+      status:            'pending',
+      payment_status:    'pending',
+      payment_method:    METHOD === 'momo' ? ('momo_'+NETWORK) : METHOD,
+      payment_reference: refid,
+      guest_name:        form.name,
+      guest_email:       form.email,
+      guest_phone:       form.phone,
+    }).select('id').single();
+
+    if (bkErr) {
+      console.error('❌ [CHECKOUT] Supabase booking insert failed:', bkErr);
+      throw new Error('Booking creation failed: '+bkErr.message);
+    }
+    console.log('✅ [CHECKOUT] Pending booking created — ID:', bk.id);
+
+    /* ── Step 4: Call Edge Function → K-Pay API ── */
+    const edgeFnUrl = CONFIG.FUNCTIONS_BASE+'/create-kpay-payment';
+    const redirectUrl = window.location.origin+'/Checkout/result/?ref='+encodeURIComponent(refid);
+    const payload = {
+      refid,
+      amount:      TOTAL,
+      currency:    CUR,
+      pmethod:     METHOD==='card' ? 'cc' : METHOD,
+      msisdn:      METHOD==='momo' ? form.momoMsisdn : form.msisdn,
+      email:       form.email,
+      cname:       form.name,
+      cnumber:     bk.id,
+      details:     NIGHTS+' night'+(NIGHTS>1?'s':'')+' at '+TITLE,
+      booking_id:  bk.id,
+      redirecturl: redirectUrl,
+    };
+    console.log('📡 [CHECKOUT] Calling Edge Function:', edgeFnUrl);
+    console.log('📦 [CHECKOUT] K-Pay payload:', { ...payload, msisdn: payload.msisdn?.slice(0,6)+'***' });
+
+    const kpayRes = await fetch(edgeFnUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    console.log('📬 [CHECKOUT] Edge Function HTTP status:', kpayRes.status);
+    const kpayData = await kpayRes.json();
+    console.log('📬 [CHECKOUT] K-Pay response:', kpayData);
+
+    if (!kpayData.success || !kpayData.url) {
+      /* K-Pay rejected — clean up pending booking */
+      console.warn('⚠️ [CHECKOUT] K-Pay rejected — deleting pending booking:', bk.id);
+      await sb.from('bookings').delete().eq('id', bk.id).catch(e =>
+        console.error('[CHECKOUT] Cleanup delete failed:', e)
+      );
+      throw new Error(kpayData.message || 'K-Pay rejected the request');
+    }
+
+    /* ── Step 5: Redirect to K-Pay ── */
+    console.log('↗️ [CHECKOUT] Redirecting to K-Pay checkout:', kpayData.url);
+    console.log('ℹ️ [CHECKOUT] K-Pay TID:', kpayData.tid, '| AuthKey:', kpayData.authkey);
+    $('redirectNote').style.display = 'flex';
+    tx('payLabel','Redirecting...');
+    window.location.href = kpayData.url;
+
+  } catch(err) {
+    console.error('❌ [CHECKOUT] Fatal error:', err);
+    showErr(err.message || 'Something went wrong. Please try again.');
+    const btn = $('payBtn');
+    if(btn) { btn.disabled=false; refreshBtn(); }
+    $('redirectNote').style.display='none';
+  }
 }
 
-// ── Show success page ──
-function showSuccess(bookingId, txRef) {
-    document.getElementById('mainPage').style.display  = 'none';
-    document.getElementById('successView').style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    document.getElementById('sucRef').innerHTML =
-        '<i class="fa-solid fa-receipt" style="margin-right:6px;"></i>' +
-        'Booking #' + String(bookingId || '').slice(0, 8).toUpperCase() +
-        '&nbsp;&nbsp;·&nbsp;&nbsp;Ref: ' + txRef;
-    document.title = 'Booking Confirmed — AfriStay';
+/* ── Pay on Arrival (no K-Pay involved) ── */
+async function doArrival(form) {
+  console.log('🏠 [ARRIVAL] Starting pay-on-arrival reservation...');
+  console.log('🏠 [ARRIVAL] Guest:', form.name, form.email, form.phone);
+  console.log('🏠 [ARRIVAL] Booking:', { listing: LISTING, in: S_DATE, out: E_DATE, nights: NIGHTS, total: TOTAL });
+
+  const btn = $('payBtn');
+  btn.disabled = true;
+  tx('payLabel','Reserving...');
+  const sb = window.supabaseClient;
+
+  try {
+    /* Get user if logged in */
+    let uid = null;
+    if(sb) {
+      const { data:{ user } } = await sb.auth.getUser().catch(()=>({data:{}}));
+      uid = user?.id||null;
+    }
+    console.log('👤 [ARRIVAL] User ID:', uid || '(guest)');
+
+    /* ── Check for existing active booking on this listing ── */
+    console.log('🔍 [ARRIVAL] Checking for duplicate booking...');
+    const { data: existing } = await sb.from('bookings')
+      .select('id, status')
+      .eq('listing_id', LISTING)
+      .eq('user_id', uid)
+      .not('status', 'in', '("cancelled","rejected")')
+      .limit(1);
+    if (existing && existing.length > 0) {
+      console.warn('⚠️ [ARRIVAL] Duplicate booking blocked — existing booking:', existing[0].id, 'status:', existing[0].status);
+      showErr('You already have an active booking for this listing. Check your bookings in the Dashboard.');
+      btn.disabled = false; refreshBtn();
+      return;
+    }
+    console.log('✅ [ARRIVAL] No duplicate found — proceeding');
+
+    /* Insert booking */
+    const insertPayload = {
+      listing_id:     LISTING,
+      user_id:        uid,
+      start_date:     S_DATE,
+      end_date:       E_DATE,
+      total_amount:   TOTAL,
+      status:         'pending',
+      payment_status: 'pending',
+      payment_method: 'pay_on_arrival',
+      guest_name:     form.name,
+      guest_email:    form.email,
+      guest_phone:    form.phone,
+    };
+    console.log('💾 [ARRIVAL] Inserting booking into Supabase:', insertPayload);
+
+    const { data: bk, error } = await sb.from('bookings')
+      .insert(insertPayload)
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('❌ [ARRIVAL] Supabase insert error:', error);
+      console.error('❌ [ARRIVAL] Error details:', { code: error.code, message: error.message, details: error.details, hint: error.hint });
+      throw error;
+    }
+
+    console.log('✅ [ARRIVAL] Booking reserved successfully — ID:', bk.id);
+
+    /* Show success */
+    $('mainPage').style.display = 'none';
+    document.body.insertAdjacentHTML('beforeend', `
+      <div style="max-width:520px;margin:120px auto 60px;text-align:center;background:#fff;border-radius:24px;box-shadow:0 2px 28px rgba(0,0,0,.08);padding:52px 36px;font-family:'Sora',sans-serif">
+        <i class="fa-solid fa-circle-check" style="font-size:72px;color:#16a34a;display:block;margin-bottom:20px;animation:pop .5s cubic-bezier(.175,.885,.32,1.275)"></i>
+        <h2 style="font-family:'Playfair Display',serif;font-size:28px;color:#161616;margin-bottom:10px">Booking Reserved! 🏠</h2>
+        <p style="font-size:15px;color:#888;margin-bottom:24px;line-height:1.7">Your stay is reserved at no charge. The host will confirm and you'll pay on arrival.</p>
+        <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:14px 20px;font-size:13px;color:#166534;font-weight:700;margin-bottom:26px">
+          <i class="fa-solid fa-clock" style="margin-right:6px"></i>Pending host confirmation · Booking #${String(bk.id||'').slice(0,8).toUpperCase()}
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <a href="/Dashboard" style="display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border:2px solid #EB6753;color:#EB6753;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none">
+            <i class="fa-solid fa-gauge"></i> My Bookings
+          </a>
+          <a href="/Listings" style="display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border:2px solid #EB6753;color:#EB6753;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none">
+            <i class="fa-solid fa-magnifying-glass"></i> Browse More
+          </a>
+        </div>
+      </div>
+      <style>@keyframes pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}</style>
+    `);
+  } catch(err) {
+    console.error('❌ [ARRIVAL] Reservation failed:', err);
+    showErr('Reservation failed: '+err.message);
+    btn.disabled=false; refreshBtn();
+  }
 }
 
 function showErr(msg) {
-    const b = document.getElementById('errBanner');
-    document.getElementById('errMsg').textContent = msg;
-    b.style.display = 'flex';
-    b.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  const b=$('errBox'); tx('errMsg',msg);
+  b.style.display='flex'; b.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
-function hideErr() {
-    document.getElementById('errBanner').style.display = 'none';
-}
+function hideErr() { $('errBox').style.display='none'; }
 </script>
-
 </body>
 </html>

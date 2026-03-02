@@ -61,9 +61,40 @@
         /* skeleton */
         .skeleton { background: linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 10px; }
         @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+/* ── RESPONSIVE MOBILE VIEW ── */
+        .date-inputs { display: flex; gap: 10px; margin-bottom: 16px; }
 
-        @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } .info-card { position: static; } }
-        @media (max-width: 600px) { .page-body { padding: 80px 14px 48px; } .gallery-main img, .gallery-main .no-img { height: 260px; } .listing-title { font-size: 22px; } }
+        @media (max-width: 900px) { 
+            .detail-grid { grid-template-columns: 1fr; } 
+            .info-card { position: static; margin-top: 20px; } 
+        }
+
+        @media (max-width: 768px) {
+            .page-body { padding: 90px 16px 48px; }
+            .gallery-main img, .gallery-main .no-img { height: 320px; }
+            .listing-title { font-size: 24px; margin: 16px 0 10px; }
+            .price-line { font-size: 28px; }
+        }
+
+        @media (max-width: 480px) { 
+            .page-body { padding: 80px 14px 40px; } 
+            .gallery-main img, .gallery-main .no-img { height: 250px; } 
+            .listing-title { font-size: 22px; } 
+            
+            /* Stack date inputs so they aren't squished on small phones */
+            .date-inputs { flex-direction: column; gap: 12px; }
+            
+            /* Make info card fit the screen nicely */
+            .info-card { padding: 20px; border-radius: 16px; }
+
+            /* Keep info chips from overflowing */
+            .meta-chips { gap: 6px; margin-bottom: 16px; }
+            .meta-chip { font-size: 12px; padding: 4px 10px; }
+            
+            /* Prevent long titles in breadcrumbs from breaking the page width */
+            .breadcrumb { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+            .breadcrumb span { display: inline; }
+        }
     </style>
 </head>
 <body>
@@ -150,7 +181,7 @@
 
                 <div id="bookingForm">
                     <label style="font-size: 13px; color: #666; font-weight: 600; margin-bottom: 6px; display: block;">Select Dates</label>
-                    <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                    <div class="date-inputs">
                         <input type="date" id="bookingStartDate" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Inter', sans-serif;">
                         <input type="date" id="bookingEndDate" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Inter', sans-serif;">
                     </div>
@@ -170,8 +201,10 @@
     <img id="lbImg" src="" alt="">
 </div>
 
+</body>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/config.js"></script>
 <script src="/js/detail.js"></script>
-</body>
+<script src="/js/utils.js"></script>
+<script src="/js/script.js"></script>
 </html>

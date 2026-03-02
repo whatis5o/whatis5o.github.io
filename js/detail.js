@@ -130,13 +130,17 @@ async function loadListingDetails() {
     }
 
     // ── Fetch and render owner contact info ──
+// ── Fetch and render owner contact info ──
     if (listing.owner_id) {
         _supabase
             .from('profiles')
             .select('full_name, email, phone')
             .eq('id', listing.owner_id)
-            .single()
-            .then(({ data: owner }) => { if (owner) renderOwnerContact(owner); });
+            .maybeSingle() /* Changed from .single() */
+            .then(({ data: owner, error }) => { 
+                if (error) console.warn("Could not fetch owner:", error);
+                if (owner) renderOwnerContact(owner); 
+            });
     }
 }
 

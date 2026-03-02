@@ -240,3 +240,5 @@ If you see any red X marks (❌), the console will tell you exactly what to fix!
 ---
 
 **Made with 💪 for vibe coders**
+
+change booking architecture to request first then approves receive email click link pay and receive email with receipt

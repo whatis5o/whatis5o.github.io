@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Result — AfriStay</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{--red:#EB6753;--green:#16a34a;--border:#e8e8e8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sora',sans-serif;background:#f4f3f1;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;-webkit-font-smoothing:antialiased}
+.card{max-width:520px;width:100%;background:#fff;border-radius:24px;box-shadow:0 4px 40px rgba(0,0,0,.1);padding:52px 36px;text-align:center}
+.big-icon{font-size:72px;display:block;margin-bottom:20px}
+.big-icon.success{color:var(--green);animation:pop .5s cubic-bezier(.175,.885,.32,1.275)}
+.big-icon.pending{color:#f59e0b;animation:pulse 1.5s infinite}
+.big-icon.fail{color:#ef4444}
+@keyframes pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+h2{font-family:'Playfair Display',serif;font-size:28px;color:#161616;margin-bottom:10px}
+.sub{font-size:15px;color:#888;margin-bottom:24px;line-height:1.7}
+.ref-box{border-radius:12px;padding:14px 20px;font-size:13px;font-weight:700;margin-bottom:26px;line-height:1.8}
+.ref-box.success{background:#f0fdf4;border:1.5px solid #bbf7d0;color:#166534}
+.ref-box.pending{background:#fffbeb;border:1.5px solid #fde68a;color:#92400e}
+.ref-box.fail{background:#fff0f0;border:1.5px solid #fcc;color:#c0392b}
+.btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border:2px solid var(--red);color:var(--red);border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;transition:all .2s;font-family:'Sora',sans-serif}
+.btn:hover{background:var(--red);color:#fff}
+.spinner{display:inline-block;width:20px;height:20px;border:3px solid var(--border);border-top-color:var(--red);border-radius:50%;animation:spin 1s linear infinite;margin-bottom:4px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+    <!-- Loading state -->
+    <div class="spinner"></div>
+    <h2 style="margin-top:16px">Checking payment…</h2>
+    <p class="sub">Please wait while we confirm your payment status.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/config.js"></script>
+<script>
+/*
+ * K-Pay redirects here after payment: /Checkout/result/?ref=REFID
+ * We poll Supabase for the booking status (the webhook updates it).
+ * K-Pay also has a checkstatus endpoint if needed.
+ */
+const ref = new URLSearchParams(window.location.search).get('ref') || '';
+const card = document.getElementById('card');
+
+async function checkStatus() {
+    if (!ref) { showFail('Missing payment reference.'); return; }
+
+    const sb = window.supabaseClient;
+    if (!sb) { showFail('Connection error.'); return; }
+
+  /* Poll up to 12 times (every 3s = 36 seconds total) */
+    for (let attempt = 0; attempt < 12; attempt++) {
+    const { data: bk } = await sb.from('bookings')
+        .select('id, status, payment_status, total_amount, currency')
+        .eq('payment_reference', ref)
+        .maybeSingle();
+
+    if (!bk) {
+        if (attempt < 3) {
+        /* Booking might not exist yet (race condition) — keep waiting */
+        await sleep(3000); continue;
+        }
+        showFail('Booking not found for this reference. Contact support with ref: ' + ref);
+        return;
+    }
+
+    if (bk.payment_status === 'paid' || bk.status === 'confirmed') {
+        showSuccess(bk);
+        return;
+    }
+
+    if (bk.payment_status === 'failed' || bk.status === 'cancelled') {
+        showFail('Payment failed or was cancelled. Please go back and try again.');
+        return;
+    }
+
+    /* Still pending — keep polling */
+    await sleep(3000);
+    }
+
+  /* Timeout — show pending state */
+    showPending(ref);
+}
+
+function showSuccess(bk) {
+    const amt = Number(bk.total_amount||0).toLocaleString('en-RW');
+    card.innerHTML = `
+    <i class="fa-solid fa-circle-check big-icon success"></i>
+    <h2>Payment Confirmed! 🎉</h2>
+    <p class="sub">Your booking is confirmed. The host will reach out shortly to confirm the details.</p>
+    <div class="ref-box success">
+        <i class="fa-solid fa-receipt" style="margin-right:6px"></i>
+        Booking #${String(bk.id||'').slice(0,8).toUpperCase()}<br>
+        Amount: ${amt} RWF &nbsp;·&nbsp; Ref: ${ref}
+    </div>
+    <div class="btns">
+        <a href="/Dashboard" class="btn"><i class="fa-solid fa-gauge"></i> My Bookings</a>
+        <a href="/Listings" class="btn"><i class="fa-solid fa-magnifying-glass"></i> Browse More</a>
+    </div>`;
+    document.title = 'Booking Confirmed — AfriStay';
+}
+
+function showPending(ref) {
+  card.innerHTML = `
+    <i class="fa-solid fa-clock big-icon pending"></i>
+    <h2>Payment Processing…</h2>
+    <p class="sub">Your payment is still being confirmed. This can take a few minutes for Mobile Money. Your booking will be updated automatically — check My Bookings in a moment.</p>
+    <div class="ref-box pending">
+        <i class="fa-solid fa-info-circle" style="margin-right:6px"></i>
+        Reference: ${ref}<br>
+        <small>Save this reference in case you need to contact support.</small>
+    </div>
+    <div class="btns">
+        <a href="/Dashboard" class="btn"><i class="fa-solid fa-gauge"></i> Check My Bookings</a>
+    </div>`;
+    document.title = 'Payment Processing — AfriStay';
+}
+
+function showFail(msg) {
+    card.innerHTML = `
+    <i class="fa-solid fa-circle-xmark big-icon fail"></i>
+    <h2>Payment Not Confirmed</h2>
+    <p class="sub">${msg}</p>
+    <div class="ref-box fail">
+        <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i>
+        Ref: ${ref || 'N/A'}
+    </div>
+    <div class="btns">
+        <a href="javascript:history.back()" class="btn"><i class="fa-solid fa-arrow-left"></i> Try Again</a>
+        <a href="/Dashboard" class="btn"><i class="fa-solid fa-gauge"></i> My Bookings</a>
+    </div>`;
+    document.title = 'Payment Failed — AfriStay';
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+document.addEventListener('DOMContentLoaded', checkStatus);
+</script>
+</body>
+</html>

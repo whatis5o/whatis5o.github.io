@@ -468,10 +468,42 @@ window.deleteAccount = async function() {
 /* ══════════════════════════════════════════════
    DOWNLOAD RECEIPT (PDF via jsPDF)
    ══════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════
+   DOWNLOAD RECEIPT (PDF via jsPDF) + ANTI-SPAM
+   ══════════════════════════════════════════════ */
 window.downloadReceipt = async function(bookingId) {
-    toast('Generating receipt...', 'info');
+    toast('Authenticating receipt...', 'info');
     try {
+        // 1. Fetch booking data
         const { data: b } = await _sb.from('bookings').select('*').eq('id', bookingId).single();
+        if (!b) throw new Error("Booking not found");
+
+        // 2. Anti-Spam & Traffic Control via `digital_receipts` table
+        let { data: receipt } = await _sb.from('digital_receipts').select('*').eq('booking_id', bookingId).maybeSingle();
+        const receiptNo = receipt ? receipt.receipt_no : 'RCP-' + b.id.substring(0, 8).toUpperCase();
+
+        if (!receipt) {
+            // First time downloading: Create the record
+            const { data: newReceipt, error: insErr } = await _sb.from('digital_receipts').insert({
+                booking_id: b.id,
+                user_id: b.user_id,
+                receipt_no: receiptNo,
+                download_count: 1
+            }).select().single();
+            if (!insErr) receipt = newReceipt;
+        } else {
+            // Enforcement: Max 5 downloads per receipt to prevent trafficking/bot abuse
+            if (receipt.download_count >= 5) {
+                toast('Download limit reached to prevent abuse. Please contact support.', 'error');
+                return;
+            }
+            // Increment the counter
+            await _sb.from('digital_receipts').update({ download_count: receipt.download_count + 1 }).eq('id', receipt.id);
+        }
+
+        toast('Generating PDF...', 'info');
+
+        // 3. Fetch Listing & Owner details for the PDF
         const { data: l } = await _sb.from('listings').select('title, price, currency, address, province_id, district_id, owner_id').eq('id', b.listing_id).single();
         const { data: owner } = await _sb.from('profiles').select('full_name, email, phone').eq('id', l?.owner_id).single();
 
@@ -490,7 +522,6 @@ window.downloadReceipt = async function(bookingId) {
         const totalFmt = Number(b.total_amount).toLocaleString('en-RW') + ' ' + currency;
         const pricePN  = Number(l?.price || 0).toLocaleString('en-RW');
         const payMethod= (b.payment_method || '').replace('_',' ').replace(/\b\w/g, c => c.toUpperCase());
-        const receiptNo= 'RCP-' + b.id.substring(0, 8).toUpperCase();
         const issued   = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
         // Load jsPDF on demand
@@ -505,64 +536,46 @@ window.downloadReceipt = async function(bookingId) {
 
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-        const W = 210, M = 20;
-        let y = 0;
+        const W = 210, M = 20; let y = 0;
 
         // Header
-        doc.setFillColor(26, 26, 46);
-        doc.rect(0, 0, W, 44, 'F');
-        doc.setTextColor(235, 103, 83);
-        doc.setFontSize(26); doc.setFont('helvetica', 'bold');
+        doc.setFillColor(26, 26, 46); doc.rect(0, 0, W, 44, 'F');
+        doc.setTextColor(235, 103, 83); doc.setFontSize(26); doc.setFont('helvetica', 'bold');
         doc.text('AfriStay', W/2, 18, { align: 'center' });
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-        doc.text('Booking Receipt', W/2, 30, { align: 'center' });
-        doc.setFontSize(9); doc.setTextColor(180, 180, 200);
-        doc.text('afristay.rw', W/2, 38, { align: 'center' });
+        doc.setTextColor(255, 255, 255); doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+        doc.text('Digital Booking Receipt', W/2, 30, { align: 'center' });
         y = 58;
 
         // Receipt number
-        doc.setFillColor(248, 249, 250);
-        doc.roundedRect(M, y-6, W-M*2, 16, 3, 3, 'F');
-        doc.setTextColor(80,80,80); doc.setFontSize(9); doc.setFont('helvetica','normal');
-        doc.text('RECEIPT NO', M+6, y+3);
-        doc.setTextColor(30,30,30); doc.setFontSize(11); doc.setFont('helvetica','bold');
-        doc.text(receiptNo, M+6, y+8);
-        doc.setTextColor(80,80,80); doc.setFontSize(9); doc.setFont('helvetica','normal');
-        doc.text('ISSUED', W-M-6, y+3, { align: 'right' });
-        doc.setTextColor(30,30,30); doc.setFontSize(10); doc.setFont('helvetica','bold');
-        doc.text(issued, W-M-6, y+8, { align: 'right' });
+        doc.setFillColor(248, 249, 250); doc.roundedRect(M, y-6, W-M*2, 16, 3, 3, 'F');
+        doc.setTextColor(80,80,80); doc.setFontSize(9); doc.text('RECEIPT NO', M+6, y+3);
+        doc.setTextColor(30,30,30); doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.text(receiptNo, M+6, y+8);
+        doc.setTextColor(80,80,80); doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.text('ISSUED', W-M-6, y+3, { align: 'right' });
+        doc.setTextColor(30,30,30); doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.text(issued, W-M-6, y+8, { align: 'right' });
         y += 26;
 
         const secHead = title => {
-            doc.setFillColor(235, 103, 83);
-            doc.rect(M, y, 3, 6, 'F');
+            doc.setFillColor(235, 103, 83); doc.rect(M, y, 3, 6, 'F');
             doc.setTextColor(30,30,30); doc.setFontSize(10); doc.setFont('helvetica','bold');
-            doc.text(title, M+7, y+5);
-            y += 12;
+            doc.text(title, M+7, y+5); y += 12;
         };
         const row = (label, value, highlight = false) => {
-            doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(140,140,140);
-            doc.text(label, M, y);
+            doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(140,140,140); doc.text(label, M, y);
             doc.setTextColor(highlight ? 235 : 30, highlight ? 103 : 30, highlight ? 83 : 30);
-            doc.setFont('helvetica', highlight ? 'bold' : 'normal');
-            doc.setFontSize(highlight ? 12 : 10);
-            doc.text(value, W-M, y, { align: 'right' });
-            y += 8;
+            doc.setFont('helvetica', highlight ? 'bold' : 'normal'); doc.setFontSize(highlight ? 12 : 10);
+            doc.text(value, W-M, y, { align: 'right' }); y += 8;
             doc.setDrawColor(240,240,240); doc.line(M, y-1, W-M, y-1); y += 2;
         };
 
         secHead('PROPERTY');
-        doc.setTextColor(20,20,20); doc.setFontSize(13); doc.setFont('helvetica','bold');
-        doc.text(l?.title || '—', M, y); y += 7;
-        doc.setTextColor(100,100,100); doc.setFontSize(9); doc.setFont('helvetica','normal');
-        doc.text('📍 ' + loc, M, y); y += 14;
+        doc.setTextColor(20,20,20); doc.setFontSize(13); doc.setFont('helvetica','bold'); doc.text(l?.title || '—', M, y); y += 7;
+        doc.setTextColor(100,100,100); doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.text('📍 ' + loc, M, y); y += 14;
 
         secHead('BOOKING DETAILS');
         row('Check-in',  fmt(b.start_date));
         row('Check-out', fmt(b.end_date));
         row('Duration',  nights + ' night' + (nights !== 1 ? 's' : ''));
-        row('Status',    '✓ ' + b.status.charAt(0).toUpperCase() + b.status.slice(1));
+        row('Status',    '✓ Paid & Confirmed');
         y += 4;
 
         secHead('PAYMENT');
@@ -571,20 +584,15 @@ window.downloadReceipt = async function(bookingId) {
         y += 2;
 
         // Total
-        doc.setFillColor(255, 249, 248);
-        doc.roundedRect(M, y, W-M*2, 16, 3, 3, 'F');
-        doc.setDrawColor(235, 103, 83); doc.setLineWidth(0.5);
-        doc.roundedRect(M, y, W-M*2, 16, 3, 3, 'S');
-        doc.setTextColor(30,30,30); doc.setFontSize(11); doc.setFont('helvetica','bold');
-        doc.text('TOTAL', M+6, y+10);
-        doc.setTextColor(235,103,83); doc.setFontSize(15);
-        doc.text(totalFmt, W-M-6, y+10, { align: 'right' });
+        doc.setFillColor(255, 249, 248); doc.roundedRect(M, y, W-M*2, 16, 3, 3, 'F');
+        doc.setDrawColor(235, 103, 83); doc.setLineWidth(0.5); doc.roundedRect(M, y, W-M*2, 16, 3, 3, 'S');
+        doc.setTextColor(30,30,30); doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.text('TOTAL', M+6, y+10);
+        doc.setTextColor(235,103,83); doc.setFontSize(15); doc.text(totalFmt, W-M-6, y+10, { align: 'right' });
         y += 26;
 
         if (owner) {
             secHead('HOST CONTACT');
-            doc.setTextColor(30,30,30); doc.setFontSize(10); doc.setFont('helvetica','bold');
-            doc.text(owner.full_name || '—', M, y); y += 6;
+            doc.setTextColor(30,30,30); doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.text(owner.full_name || '—', M, y); y += 6;
             doc.setTextColor(100,100,100); doc.setFontSize(9); doc.setFont('helvetica','normal');
             if (owner.email) { doc.text(owner.email, M, y); y += 6; }
             if (owner.phone) { doc.text(owner.phone, M, y); y += 6; }
@@ -592,20 +600,19 @@ window.downloadReceipt = async function(bookingId) {
 
         // Footer
         const pH = doc.internal.pageSize.height;
-        doc.setFillColor(248,249,250);
-        doc.rect(0, pH-18, W, 18, 'F');
+        doc.setFillColor(248,249,250); doc.rect(0, pH-18, W, 18, 'F');
         doc.setDrawColor(235,235,235); doc.line(0, pH-18, W, pH-18);
         doc.setTextColor(160,160,160); doc.setFontSize(8); doc.setFont('helvetica','normal');
         doc.text('© ' + new Date().getFullYear() + ' AfriStay · afristay.rw', W/2, pH-8, { align: 'center' });
 
-        doc.save('AfriStay-Receipt-' + receiptNo + '.pdf');
+        doc.save(`AfriStay-Receipt-${receiptNo}.pdf`);
         toast('📄 Receipt downloaded!', 'success');
 
     } catch (err) {
         console.error('❌ [RECEIPT] Error:', err);
         toast('Could not generate receipt: ' + err.message, 'error');
     }
-};
+};r
 
 /* ══════════════════════════════════════════════
    IMAGE RESOLVER  (table → storage fallback)
