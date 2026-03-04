@@ -1325,7 +1325,7 @@ async function loadBookingsTable() {
     tbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
 
     try {
-        let q = _supabase.from('bookings').select('id, listing_id, start_date, end_date, total_amount, status, user_id, created_at');
+        let q = _supabase.from('bookings').select('id, listing_id, start_date, end_date, total_amount, status, payment_status, payment_method, payment_failure_reason, user_id, guest_name, guest_email, created_at');
 
         if (CURRENT_ROLE === 'owner') {
             console.log("  Filtering for owner's listing bookings");
@@ -1368,23 +1368,57 @@ async function loadBookingsTable() {
                 .maybeSingle();
             
             const row = document.createElement('tr');
+            // Determine which action buttons to show
+            const isOwnerRow  = CURRENT_ROLE === 'owner' && listing?.owner_id === CURRENT_PROFILE?.id;
+            const isAdminRow  = CURRENT_ROLE === 'admin';
+            const needsAction = isOwnerRow || isAdminRow;
+            const canApprove  = needsAction && (r.status === 'awaiting_approval' || r.status === 'pending');
+            const canReject   = needsAction && (r.status === 'awaiting_approval' || r.status === 'pending' || r.status === 'confirmed');
+            const isPaid      = r.status === 'confirmed' || r.status === 'approved' || r.status === 'completed';
+            const hasFailed   = r.status === 'payment_failed';
+
+            const statusLabels = {
+                awaiting_approval: '⏳ Awaiting Approval',
+                pending:           '⏳ Pending',
+                payment_pending:   '💳 Charging...',
+                payment_failed:    '❌ Payment Failed',
+                confirmed:         '✅ Confirmed',
+                approved:          '✅ Approved',
+                rejected:          '❌ Rejected',
+                cancelled:         '🚫 Cancelled',
+                completed:         '🏁 Completed',
+            };
+            const statusLabel = statusLabels[r.status] || r.status;
+            const fmtAmt = Number(r.total_amount || 0).toLocaleString('en-RW');
+            const pmLabel = (r.payment_method || '—').replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+
             row.innerHTML = `
                 <td>${i + 1}.</td>
-                <td>${shortId(r.id)}</td>
+                <td style="font-family:monospace;font-size:12px;">${shortId(r.id)}</td>
                 <td>${escapeHtml(listing?.title || '—')}</td>
-                <td>${shortId(r.user_id)}</td>
-                <td>${r.start_date} → ${r.end_date}</td>
-                <td>${r.total_amount}</td>
+                <td style="font-size:12px;">${r.guest_name || shortId(r.user_id)}<br><span style="color:#aaa;font-size:11px;">${r.guest_email || ''}</span></td>
+                <td style="font-size:12px;">${r.start_date}<br><span style="color:#aaa">→ ${r.end_date}</span></td>
+                <td style="font-weight:700;color:#EB6753;">${fmtAmt} RWF<br><span style="font-size:11px;color:#aaa;font-weight:400;">${pmLabel}</span></td>
                 <td>
-                    <span class="status-badge status-${r.status}">${r.status}</span>
-                    ${(CURRENT_ROLE === 'owner' && listing?.owner_id === CURRENT_PROFILE.id && r.status === 'pending') ? `
-                        <button class="btn-small" style="background:#e8f8f0;color:#27ae60;border:1px solid #b8e6ce;" onclick="approveBooking('${r.id}')"><i class="fa-solid fa-check"></i> Approve</button>
-                        <button class="btn-small" style="background:#fde8e8;color:#e74c3c;border:1px solid #f5c6c6;" onclick="rejectBooking('${r.id}')"><i class="fa-solid fa-xmark"></i> Reject</button>
-                    ` : ''}
-                    ${r.status === 'approved' ? 
-                        `<button class="btn-small" style="background:#f0f9ff;color:#3498db;border:1px solid #d0e8f8;" onclick="downloadReceipt('${r.id}')"><i class="fa-solid fa-download"></i> Receipt</button>` : ''}
-                    ${DEMO_MODE && (CURRENT_ROLE === 'admin' || (CURRENT_ROLE === 'owner' && listing?.owner_id === CURRENT_PROFILE.id)) ? 
-                        `<button class="btn-small" onclick="demoMarkPaid('${r.id}')">Mark Paid (demo)</button>` : ''}
+                    <span class="status-badge status-${r.status}" style="white-space:nowrap;">${statusLabel}</span>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
+                        ${canApprove ? `
+                            <button class="btn-small" style="background:#e8f8f0;color:#27ae60;border:1px solid #b8e6ce;" onclick="approveBooking('${r.id}')">
+                                <i class="fa-solid fa-check"></i> Approve
+                            </button>` : ''}
+                        ${canReject ? `
+                            <button class="btn-small" style="background:#fde8e8;color:#e74c3c;border:1px solid #f5c6c6;" onclick="rejectBooking('${r.id}')">
+                                <i class="fa-solid fa-xmark"></i> Reject
+                            </button>` : ''}
+                        ${isPaid ? `
+                            <button class="btn-small" style="background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;" onclick="downloadReceipt('${r.id}')">
+                                <i class="fa-solid fa-receipt"></i> Receipt
+                            </button>` : ''}
+                        ${hasFailed && (CURRENT_ROLE === 'user' || CURRENT_ROLE === 'admin') ? `
+                            <span style="font-size:11px;color:#e74c3c;display:block;margin-top:2px;">
+                                ${escapeHtml(r.payment_failure_reason || 'Payment failed')}
+                            </span>` : ''}
+                    </div>
                 </td>
             `;
             tbody.appendChild(row);
@@ -1612,91 +1646,66 @@ async function toggleListingAvailability(listingId, current) {
     }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   APPROVE BOOKING — New Architecture
+   Owner approves → calls charge-and-payout Edge Function →
+   K-Pay charges customer → webhook confirms → receipt generated
+   ═══════════════════════════════════════════════════════════════ */
 async function approveBooking(bookingId) {
-    console.log("✅ [ACTION] Approving booking:", bookingId);
-    if (!confirm('Approve this booking? The guest will be notified.')) return;
+    console.log("✅ [APPROVE] Owner approving booking:", bookingId);
 
-    toast('Approving booking...', 'info');
+    const booking = await _supabase.from('bookings').select('*').eq('id', bookingId).single()
+        .then(r => r.data);
+    if (!booking) { toast('Booking not found', 'error'); return; }
+
+    const isArrival = booking.payment_method === 'pay_on_arrival';
+    const msg = isArrival
+        ? 'Approve this pay-on-arrival reservation? Guest will be notified.'
+        : "Approve this booking? This will immediately charge the guest's card/MoMo.";
+    if (!confirm(msg)) return;
+
+    toast('Processing approval...', 'info');
 
     try {
-        // 1. Mark booking approved in DB
-        const { error } = await _supabase
-            .from('bookings')
-            .update({ status: 'approved' })
-            .eq('id', bookingId);
-        if (error) throw error;
+        if (isArrival) {
+            /* ── Pay on arrival: just confirm, no charge ── */
+            const { error } = await _supabase.from('bookings')
+                .update({ status: 'confirmed', payment_status: 'pending' })
+                .eq('id', bookingId);
+            if (error) throw error;
+            console.log('✅ [APPROVE] Pay-on-arrival confirmed:', bookingId);
+            toast('✅ Reservation confirmed! Guest has been notified.', 'success');
 
-        // 2. Fetch all details needed for the emails
-        const { data: booking }  = await _supabase.from('bookings').select('*').eq('id', bookingId).single();
-        const { data: listing }  = await _supabase.from('listings').select('title,price,currency,address,province_id,district_id,owner_id').eq('id', booking.listing_id).single();
-        const { data: booker }   = await _supabase.from('profiles').select('full_name,email').eq('id', booking.user_id).single();
-        const { data: owner }    = await _supabase.from('profiles').select('full_name,email,phone').eq('id', listing?.owner_id).single();
+        } else {
+            /* ── Online payment: call charge-and-payout Edge Function ── */
+            console.log('💳 [APPROVE] Triggering charge-and-payout for booking:', bookingId);
+            toast('Charging guest payment...', 'info');
 
-        let location = listing?.address || 'Rwanda';
-        if (listing?.district_id || listing?.province_id) {
-            const [{ data: dist }, { data: prov }] = await Promise.all([
-                listing?.district_id ? _supabase.from('districts').select('name').eq('id', listing.district_id).single() : { data: null },
-                listing?.province_id ? _supabase.from('provinces').select('name').eq('id', listing.province_id).single() : { data: null },
-            ]);
-            location = [dist?.name, prov?.name].filter(Boolean).join(', ') || location;
-        }
+            const res = await fetch(CONFIG.FUNCTIONS_BASE + '/charge-and-payout', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ booking_id: bookingId }),
+            });
+            const data = await res.json();
+            console.log('📬 [APPROVE] charge-and-payout response:', data);
 
-        const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
-        const nights = Math.ceil((new Date(booking.end_date) - new Date(booking.start_date)) / 86400000);
-        const currency = listing?.currency || 'RWF';
-        const isCash = booking.payment_method === 'cash' || booking.payment_method === 'pay_on_arrival';
+            if (data.error) throw new Error(data.error);
 
-        if (booker?.email && window.emailjs) {
-            if (isCash) {
-                // ── PATH A: PAY ON ARRIVAL (Send Receipt Immediately) ──
-                await emailjs.send(
-                    EMAILJS_CONFIG.SERVICE_ID,
-                    EMAILJS_CONFIG.TEMPLATE_BOOKING_APPROVED, // Your existing template
-                    {
-                        to_email:        booker.email,
-                        booker_name:     booker.full_name || 'Guest',
-                        listing_title:   listing?.title || '—',
-                        location,
-                        check_in:        fmt(booking.start_date),
-                        check_out:       fmt(booking.end_date),
-                        total:           Number(booking.total_amount).toLocaleString('en-RW') + ' ' + currency,
-                        payment_method:  'Pay on Arrival',
-                        owner_name:      owner?.full_name || 'Host',
-                        dashboard_url:   window.location.origin + '/Profile/', // Send them to profile to download PDF
-                    },
-                    EMAILJS_CONFIG.PUBLIC_KEY
-                );
-                console.log('📧 Sent "Pay on Arrival" confirmation to:', booker.email);
+            if (data.checkout_url) {
+                /* MoMo/card needs customer to complete on K-Pay (webhook will confirm) */
+                console.log('ℹ️ [APPROVE] K-Pay checkout initiated — webhook will confirm payment');
+                toast('✅ Payment initiated. Waiting for guest to complete payment.', 'success');
             } else {
-                // ── PATH B: DIGITAL PAYMENT (Send "Please Pay" Link) ──
-                // You will need to create a new EmailJS template for this!
-                const paymentLink = `${window.location.origin}/Checkout/Pay/?booking_id=${booking.id}`;
-                
-                await emailjs.send(
-                    EMAILJS_CONFIG.SERVICE_ID,
-                    'template_PAYMENT_REQUIRED', // REPLACE THIS with a new EmailJS Template ID
-                    {
-                        to_email:        booker.email,
-                        booker_name:     booker.full_name || 'Guest',
-                        listing_title:   listing?.title || '—',
-                        total:           Number(booking.total_amount).toLocaleString('en-RW') + ' ' + currency,
-                        payment_link:    paymentLink, // The crucial link!
-                    },
-                    EMAILJS_CONFIG.PUBLIC_KEY
-                );
-                console.log('📧 Sent "Action Required: Pay Now" link to:', booker.email);
+                toast('✅ Booking approved and payment processing!', 'success');
             }
         }
 
-        toast('✅ Booking approved! Guest has been notified.', 'success');
         await loadBookingsTable();
-        await filterListings();
-        bustListingCache();
-        if (document.getElementById('dashPendingListings')) loadDashPendingListings();
+        await loadCounts();
 
     } catch (err) {
-        console.error("❌ [ACTION] Error approving booking:", err);
-        toast('Failed to approve booking: ' + err.message, 'error');
+        console.error("❌ [APPROVE] Error:", err);
+        toast('Failed to approve: ' + err.message, 'error');
     }
 }
 
@@ -2912,185 +2921,488 @@ window.closeModal = closeModal;
 window.filterTable = filterTable;
 window.togglePanels = togglePanels;
 
+
+/* ═══════════════════════════════════════════════════════════════
+   URL ACTION HANDLER
+   Email links contain ?action=approve&booking=ID
+   Opens dashboard and auto-triggers the action
+   ═══════════════════════════════════════════════════════════════ */
+async function handleUrlActions() {
+    const params = new URLSearchParams(window.location.search);
+    const action    = params.get('action');
+    const bookingId = params.get('booking');
+    if (!action || !bookingId) return;
+
+    console.log(`[URL-ACTION] action=${action} booking=${bookingId}`);
+
+    // Clean URL so it doesn't re-trigger on reload
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, '', cleanUrl);
+
+    // Wait for auth + data to load
+    await new Promise(r => setTimeout(r, 1500));
+
+    if (action === 'approve') {
+        console.log('[URL-ACTION] Auto-approving booking from email link:', bookingId);
+        await approveBooking(bookingId);
+    } else if (action === 'reject') {
+        console.log('[URL-ACTION] Auto-rejecting booking from email link:', bookingId);
+        await rejectBooking(bookingId);
+    }
+}
+
+// Run after page init
+setTimeout(handleUrlActions, 2000);
+
+/* ═══════════════════════════════════════════════════════════════
+   OWNER WALLET SETTINGS
+   Owners set their MoMo/bank details for receiving payouts
+   ═══════════════════════════════════════════════════════════════ */
+async function loadOwnerWallet() {
+    if (CURRENT_ROLE !== 'owner') return;
+    console.log('[WALLET] Loading owner wallet...');
+
+    const { data: wallet } = await _supabase
+        .from('owner_wallets')
+        .select('*')
+        .eq('owner_id', CURRENT_PROFILE.id)
+        .maybeSingle();
+
+    // Find or create wallet settings section
+    let section = document.getElementById('ownerWalletSection');
+    if (!section) {
+        const settingsPanel = document.getElementById('settingsPanel') ||
+            document.querySelector('[id*=settings], [id*=profile]');
+        if (!settingsPanel) { console.warn('[WALLET] No settings panel found'); return; }
+        section = document.createElement('div');
+        section.id = 'ownerWalletSection';
+        section.style.cssText = 'margin-top:28px;';
+        settingsPanel.appendChild(section);
+    }
+
+    const method  = wallet?.payout_method || 'momo_mtn';
+    const phone   = wallet?.momo_phone    || '';
+    const name    = wallet?.momo_name     || '';
+    const bank    = wallet?.bank_name     || '';
+    const acc     = wallet?.account_number|| '';
+    const accName = wallet?.account_name  || '';
+
+    section.innerHTML = `
+        <div style="background:#fff;border-radius:16px;padding:24px;border:1.5px solid #e8e8e8;box-shadow:0 2px 12px rgba(0,0,0,.05);">
+            <h3 style="font-size:16px;font-weight:800;color:#161616;margin-bottom:4px;display:flex;align-items:center;gap:8px;">
+                <i class="fa-solid fa-wallet" style="color:#EB6753;"></i> Payout Wallet
+            </h3>
+            <p style="font-size:13px;color:#aaa;margin-bottom:20px;">
+                Where AfriStay sends your 95% after each confirmed booking.
+                <strong style="color:#EB6753;">5% platform fee</strong> is deducted automatically.
+            </p>
+
+            ${!wallet?.verified ? `
+            <div style="background:#fff8f3;border:1.5px solid #fdd5c4;border-radius:11px;padding:12px 16px;
+                        font-size:13px;color:#9a3412;margin-bottom:18px;display:flex;align-items:center;gap:10px;">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>No payout wallet set up yet. Add your details below to receive payments.</span>
+            </div>` : `
+            <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:11px;padding:12px 16px;
+                        font-size:13px;color:#166534;margin-bottom:18px;display:flex;align-items:center;gap:10px;">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>Wallet active — payouts go to <strong>${wallet.momo_phone ? maskPhone(wallet.momo_phone) : wallet.bank_name}</strong></span>
+            </div>`}
+
+            <div style="margin-bottom:16px;">
+                <label style="font-size:11px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Payout Method</label>
+                <select id="walletMethod" onchange="toggleWalletFields()"
+                        style="width:100%;padding:11px 14px;border:1.5px solid #e8e8e8;border-radius:11px;font-size:14px;font-family:inherit;outline:none;">
+                    <option value="momo_mtn"    ${method==='momo_mtn'    ? 'selected' : ''}>MTN MoMo Rwanda</option>
+                    <option value="momo_airtel" ${method==='momo_airtel' ? 'selected' : ''}>Airtel Money Rwanda</option>
+                    <option value="bank"        ${method==='bank'        ? 'selected' : ''}>Bank Transfer</option>
+                </select>
+            </div>
+
+            <div id="walletMomoFields" style="display:${method !== 'bank' ? 'block' : 'none'};">
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:11px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">MoMo Phone Number</label>
+                    <div style="position:relative;display:flex;">
+                        <span style="position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;padding:0 12px;font-size:14px;font-weight:700;border-right:1.5px solid #e8e8e8;pointer-events:none;gap:5px;z-index:1;">
+                            🇷🇼 +250
+                        </span>
+                        <input id="walletPhone" type="tel" value="${phone.replace(/^250/,'')}" placeholder="78X XXX XXX"
+                               maxlength="9" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')"
+                               style="width:100%;padding:11px 14px 11px 95px;border:1.5px solid #e8e8e8;border-radius:11px;font-size:14px;font-family:inherit;outline:none;">
+                    </div>
+                </div>
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:11px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Account Name (as registered on MoMo)</label>
+                    <input id="walletMomoName" type="text" value="${name}" placeholder="e.g. Jean Amahoro"
+                           style="width:100%;padding:11px 14px;border:1.5px solid #e8e8e8;border-radius:11px;font-size:14px;font-family:inherit;outline:none;">
+                </div>
+            </div>
+
+            <div id="walletBankFields" style="display:${method === 'bank' ? 'block' : 'none'};">
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:11px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Bank Name</label>
+                    <input id="walletBankName" type="text" value="${bank}" placeholder="e.g. Bank of Kigali"
+                           style="width:100%;padding:11px 14px;border:1.5px solid #e8e8e8;border-radius:11px;font-size:14px;font-family:inherit;outline:none;">
+                </div>
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:11px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Account Number</label>
+                    <input id="walletAccNum" type="text" value="${acc}" placeholder="000000000"
+                           style="width:100%;padding:11px 14px;border:1.5px solid #e8e8e8;border-radius:11px;font-size:14px;font-family:inherit;outline:none;">
+                </div>
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:11px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Account Holder Name</label>
+                    <input id="walletAccName" type="text" value="${accName}" placeholder="Full name on account"
+                           style="width:100%;padding:11px 14px;border:1.5px solid #e8e8e8;border-radius:11px;font-size:14px;font-family:inherit;outline:none;">
+                </div>
+            </div>
+
+            <button onclick="saveOwnerWallet()"
+                    style="width:100%;padding:13px;background:#EB6753;color:#fff;border:none;border-radius:11px;
+                           font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:6px;
+                           transition:all .2s;" onmouseover="this.style.background='#d04e3b'" onmouseout="this.style.background='#EB6753'">
+                <i class="fa-solid fa-floppy-disk"></i> Save Payout Details
+            </button>
+        </div>
+    `;
+}
+
+function toggleWalletFields() {
+    const method = document.getElementById('walletMethod')?.value;
+    const isMomo = method !== 'bank';
+    const momoFields = document.getElementById('walletMomoFields');
+    const bankFields = document.getElementById('walletBankFields');
+    if (momoFields) momoFields.style.display = isMomo ? 'block' : 'none';
+    if (bankFields) bankFields.style.display = isMomo ? 'none'  : 'block';
+}
+
+async function saveOwnerWallet() {
+    const method    = document.getElementById('walletMethod')?.value;
+    const rawPhone  = document.getElementById('walletPhone')?.value?.trim()     || '';
+    const momoName  = document.getElementById('walletMomoName')?.value?.trim()  || '';
+    const bankName  = document.getElementById('walletBankName')?.value?.trim()  || '';
+    const accNum    = document.getElementById('walletAccNum')?.value?.trim()    || '';
+    const accName   = document.getElementById('walletAccName')?.value?.trim()   || '';
+
+    if (method !== 'bank' && (!rawPhone || rawPhone.length < 8)) {
+        toast('Please enter a valid MoMo phone number.', 'error'); return;
+    }
+    if (method === 'bank' && (!bankName || !accNum || !accName)) {
+        toast('Please fill in all bank details.', 'error'); return;
+    }
+
+    console.log('[WALLET] Saving wallet — method:', method);
+    try {
+        const payload = {
+            owner_id:       CURRENT_PROFILE.id,
+            payout_method:  method,
+            momo_phone:     method !== 'bank' ? '250' + rawPhone : null,
+            momo_name:      method !== 'bank' ? momoName : null,
+            bank_name:      method === 'bank' ? bankName : null,
+            account_number: method === 'bank' ? accNum   : null,
+            account_name:   method === 'bank' ? accName  : null,
+            is_active:      true,
+            updated_at:     new Date().toISOString(),
+        };
+
+        const { error } = await _supabase.from('owner_wallets').upsert(payload, { onConflict: 'owner_id' });
+        if (error) throw error;
+
+        console.log('✅ [WALLET] Saved successfully');
+        toast("✅ Payout wallet saved! You'll receive 95% of each booking here.", 'success');
+        await loadOwnerWallet(); // refresh to show verified state
+    } catch (err) {
+        console.error('❌ [WALLET] Save error:', err);
+        toast('Failed to save wallet: ' + err.message, 'error');
+    }
+}
+
+function maskPhone(p) {
+    if (!p || p.length < 6) return p;
+    return p.slice(0, 5) + '***' + p.slice(-3);
+}
+
+window.toggleWalletFields = toggleWalletFields;
+window.saveOwnerWallet    = saveOwnerWallet;
+window.loadOwnerWallet    = loadOwnerWallet;
+window.handleUrlActions   = handleUrlActions;
+
+/* ═══════════════════════════════════════════════════════════════
+   PAYOUT HISTORY (for owners + admin)
+   ═══════════════════════════════════════════════════════════════ */
+async function loadPayoutHistory() {
+    if (CURRENT_ROLE !== 'owner' && CURRENT_ROLE !== 'admin') return;
+
+    let section = document.getElementById('payoutHistorySection');
+    if (!section) return;
+
+    console.log('[PAYOUTS] Loading payout history...');
+
+    let q = _supabase.from('payouts')
+        .select('*')
+        .order('initiated_at', { ascending: false })
+        .limit(50);
+
+    if (CURRENT_ROLE === 'owner') q = q.eq('owner_id', CURRENT_PROFILE.id).eq('recipient_type','owner');
+
+    const { data: payouts, error } = await q;
+    if (error) { console.error('[PAYOUTS] Error:', error); return; }
+
+    if (!payouts?.length) {
+        section.innerHTML = '<p style="color:#aaa;font-size:13px;text-align:center;padding:20px;">No payouts yet.</p>';
+        return;
+    }
+
+    const fmtMoney = n => Number(n||0).toLocaleString('en-RW');
+    const fmtDate  = d => new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const statusColors = { completed:'#166534', pending:'#92400e', processing:'#1e40af', failed:'#991b1b' };
+    const statusBg     = { completed:'#f0fdf4', pending:'#fffbeb', processing:'#eff6ff', failed:'#fff0f0' };
+
+    section.innerHTML = payouts.map(p => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;
+                    border-bottom:1px solid #f5f5f5;gap:12px;flex-wrap:wrap;">
+            <div>
+                <p style="margin:0;font-size:13px;font-weight:700;color:#161616;">
+                    ${fmtMoney(p.payout_amount)} ${p.currency}
+                    <span style="font-size:11px;color:#aaa;font-weight:400;margin-left:4px;">
+                        (${p.fee_percent}% fee: ${fmtMoney(p.fee_amount)} ${p.currency})
+                    </span>
+                </p>
+                <p style="margin:2px 0 0;font-size:12px;color:#aaa;">
+                    ${p.payout_method?.replace(/_/g,' ') || '—'} · ${p.payout_phone || '—'} · ${fmtDate(p.initiated_at)}
+                </p>
+                ${p.failure_reason ? `<p style="margin:2px 0 0;font-size:11px;color:#e74c3c;">${p.failure_reason}</p>` : ''}
+            </div>
+            <span style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;
+                         background:${statusBg[p.status]||'#f5f5f5'};color:${statusColors[p.status]||'#555'};">
+                ${p.status}
+            </span>
+        </div>
+    `).join('');
+}
+
+window.loadPayoutHistory = loadPayoutHistory;
+
+/* ═══════════════════════════════════════════════════════════════
+   RECEIPT DOWNLOAD — pulls from digital_receipts table first,
+   falls back to generating from booking data
+   ═══════════════════════════════════════════════════════════════ */
+
 console.log("✨ [ADMIN] Dashboard.js loaded and ready!");
 
 /* ═══════════════════════════════════════════════
    DOWNLOAD RECEIPT (PDF) — client-side via jsPDF
    ═══════════════════════════════════════════════ */
 window.downloadReceipt = async function(bookingId) {
-    console.log('📄 [RECEIPT] Generating receipt for booking:', bookingId);
-    toast('Generating receipt...', 'info');
+    console.log('📄 [RECEIPT] Downloading receipt for booking:', bookingId);
+    toast('Preparing receipt...', 'info');
 
     try {
-        // Fetch all data needed for PDF
-        const { data: booking } = await _supabase
-            .from('bookings').select('*').eq('id', bookingId).single();
-        
-        const { data: listing } = await _supabase
-            .from('listings').select('title, price, currency, address, province_id, district_id, owner_id')
-            .eq('id', booking.listing_id).single();
+        // ── Try digital_receipts table first ───────────────────────
+        let receiptData = null;
+        const { data: dbReceipt } = await _supabase
+            .from('digital_receipts')
+            .select('*')
+            .eq('booking_id', bookingId)
+            .maybeSingle();
 
-        const { data: booker } = await _supabase
-            .from('profiles').select('full_name, email')
-            .eq('id', booking.user_id).single();
+        if (dbReceipt) {
+            console.log('✅ [RECEIPT] Found saved receipt:', dbReceipt.receipt_number);
+            receiptData = dbReceipt;
+        } else {
+            // ── Generate from booking + listing data ───────────────
+            console.log('ℹ️ [RECEIPT] No saved receipt — building from booking data');
 
-        const { data: owner } = await _supabase
-            .from('profiles').select('full_name, email, phone')
-            .eq('id', listing?.owner_id).single();
+            // Try to generate via Edge Function (will also save it)
+            try {
+                const res = await fetch(CONFIG.FUNCTIONS_BASE + '/generate-receipt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ booking_id: bookingId }),
+                });
+                const data = await res.json();
+                if (data.success && data.receipt) receiptData = data.receipt;
+            } catch (efErr) {
+                console.warn('[RECEIPT] Edge Function unavailable, building locally:', efErr.message);
+            }
 
-        let locationStr = listing?.address || 'Rwanda';
-        if (listing?.district_id || listing?.province_id) {
-            const [{ data: dist }, { data: prov }] = await Promise.all([
-                listing?.district_id ? _supabase.from('districts').select('name').eq('id', listing.district_id).single() : { data: null },
-                listing?.province_id ? _supabase.from('provinces').select('name').eq('id', listing.province_id).single() : { data: null },
-            ]);
-            locationStr = [dist?.name, prov?.name].filter(Boolean).join(', ') || locationStr;
+            // Fallback: build from raw booking data
+            if (!receiptData) {
+                const { data: booking }  = await _supabase.from('bookings').select('*').eq('id', bookingId).single();
+                const { data: listing }  = await _supabase.from('listings').select('title,price,currency,address,province_id,district_id,owner_id').eq('id', booking.listing_id).single();
+                const { data: owner }    = await _supabase.from('profiles').select('full_name,email,phone').eq('id', listing?.owner_id).single().catch(() => ({ data: null }));
+
+                let location = listing?.address || 'Rwanda';
+                try {
+                    const [{ data: dist }, { data: prov }] = await Promise.all([
+                        listing?.district_id ? _supabase.from('districts').select('name').eq('id', listing.district_id).single() : { data: null },
+                        listing?.province_id ? _supabase.from('provinces').select('name').eq('id', listing.province_id).single() : { data: null },
+                    ]);
+                    location = [dist?.name, prov?.name].filter(Boolean).join(', ') || location;
+                } catch {}
+
+                const nights      = Math.ceil((new Date(booking.end_date) - new Date(booking.start_date)) / 86400000);
+                const totalAmount = Number(booking.total_amount || 0);
+                const priceNight  = Number(listing?.price || totalAmount / nights || 0);
+                const platformFee = Math.round(totalAmount * 0.05);
+
+                receiptData = {
+                    receipt_number:  'RCP-' + booking.id.slice(0,8).toUpperCase(),
+                    listing_title:   listing?.title || 'AfriStay Property',
+                    listing_address: location,
+                    check_in:        booking.start_date,
+                    check_out:       booking.end_date,
+                    nights,
+                    price_per_night: priceNight,
+                    subtotal:        priceNight * nights,
+                    platform_fee:    platformFee,
+                    total_amount:    totalAmount,
+                    currency:        listing?.currency || 'RWF',
+                    payment_method:  booking.payment_method || 'unknown',
+                    guest_name:      booking.guest_name  || CURRENT_PROFILE?.full_name || '—',
+                    guest_email:     booking.guest_email || CURRENT_PROFILE?.email     || '—',
+                    guest_phone:     booking.guest_phone || '—',
+                    owner_name:      owner?.full_name || 'Host',
+                    issued_at:       booking.created_at || new Date().toISOString(),
+                };
+            }
         }
 
-        const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-        const nights = Math.ceil((new Date(booking.end_date) - new Date(booking.start_date)) / 86400000);
-        const payMethod = (booking.payment_method || '').replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
-        const currency = listing?.currency || 'RWF';
-        const totalFmt = Number(booking.total_amount).toLocaleString('en-RW') + ' ' + currency;
-        const pricePerNight = Number(listing?.price || 0).toLocaleString('en-RW');
-        const receiptNo = 'RCP-' + booking.id.substring(0, 8).toUpperCase();
-        const issuedDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-
-        // Load jsPDF dynamically
-        if (!window.jspdf) {
-            await new Promise((resolve, reject) => {
+        // ── Build PDF ─────────────────────────────────────────────
+        if (typeof window.jspdf === 'undefined' && typeof window.jsPDF === 'undefined') {
+            await new Promise((res, rej) => {
                 const s = document.createElement('script');
                 s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-                s.onload = resolve; s.onerror = reject;
+                s.onload = res; s.onerror = rej;
                 document.head.appendChild(s);
             });
         }
-
-        const { jsPDF } = window.jspdf;
+        const { jsPDF } = window.jspdf || window;
         const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-        const W = 210, M = 20;
+
+        const W = doc.internal.pageSize.width;
+        const M = 18;
         let y = 0;
+        const fmt    = d => d ? new Date(d + (d.includes('T') ? '' : 'T00:00:00')).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' }) : '—';
+        const money  = n => Number(n||0).toLocaleString('en-RW') + ' ' + receiptData.currency;
+        const pmLabel = String(receiptData.payment_method||'').replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
 
-        // ── Header band ──
-        doc.setFillColor(26, 26, 46);
-        doc.rect(0, 0, W, 44, 'F');
-        doc.setTextColor(235, 103, 83);
-        doc.setFontSize(26); doc.setFont('helvetica', 'bold');
-        doc.text('AfriStay', W / 2, 18, { align: 'center' });
+        // ── Header band ───────────────────────────────────────────
+        doc.setFillColor(235, 103, 83);
+        doc.rect(0, 0, W, 38, 'F');
+
+        // Logo text
         doc.setTextColor(255, 255, 255);
-        doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-        doc.text('Booking Receipt — Confirmed', W / 2, 30, { align: 'center' });
-        doc.setFontSize(9); doc.setTextColor(180, 180, 200);
-        doc.text('afristay.rw', W / 2, 38, { align: 'center' });
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(22);
+        doc.text('AfriStay', M, 16);
 
-        y = 58;
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Rwanda\'s Premier Property Marketplace', M, 23);
 
-        // ── Receipt number row ──
-        doc.setFillColor(248, 249, 250);
-        doc.roundedRect(M, y - 6, W - M * 2, 16, 3, 3, 'F');
-        doc.setTextColor(80, 80, 80); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-        doc.text('RECEIPT NO', M + 6, y + 3);
-        doc.setTextColor(30, 30, 30); doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-        doc.text(receiptNo, M + 6, y + 8);
-        doc.setTextColor(80, 80, 80); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-        doc.text('ISSUED', W - M - 6, y + 3, { align: 'right' });
-        doc.setTextColor(30, 30, 30); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-        doc.text(issuedDate, W - M - 6, y + 8, { align: 'right' });
+        // RECEIPT label
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('BOOKING RECEIPT', W - M, 16, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(receiptData.receipt_number, W - M, 23, { align: 'right' });
+        doc.text('Issued: ' + fmt(receiptData.issued_at || new Date().toISOString()), W - M, 29, { align: 'right' });
+        y = 50;
 
-        y += 26;
+        // ── Green status badge ────────────────────────────────────
+        doc.setFillColor(240, 253, 244);
+        doc.roundedRect(M, y - 5, W - M * 2, 14, 3, 3, 'F');
+        doc.setTextColor(22, 163, 74);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('✓  PAYMENT CONFIRMED', W / 2, y + 3, { align: 'center' });
+        y += 18;
 
-        // ── Section heading helper ──
-        const sectionHead = (title) => {
-            doc.setFillColor(235, 103, 83);
-            doc.rect(M, y, 3, 6, 'F');
-            doc.setTextColor(30, 30, 30); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-            doc.text(title, M + 7, y + 5);
-            y += 12;
-        };
-
-        // ── Row helper ──
-        const row = (label, value, highlight = false) => {
-            doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-            doc.setTextColor(140, 140, 140);
-            doc.text(label, M, y);
-            doc.setTextColor(highlight ? 235 : 30, highlight ? 103 : 30, highlight ? 83 : 30);
-            doc.setFont('helvetica', highlight ? 'bold' : 'normal');
-            doc.setFontSize(highlight ? 12 : 10);
-            doc.text(value, W - M, y, { align: 'right' });
-            y += 8;
-            // thin line
-            doc.setDrawColor(240, 240, 240);
-            doc.line(M, y - 1, W - M, y - 1);
-            y += 2;
-        };
-
-        // ── Property ──
-        sectionHead('PROPERTY');
-        doc.setTextColor(20, 20, 20); doc.setFontSize(13); doc.setFont('helvetica', 'bold');
-        doc.text(listing?.title || '—', M, y); y += 7;
-        doc.setTextColor(100, 100, 100); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-        doc.text('📍 ' + locationStr, M, y); y += 14;
-
-        // ── Booking details ──
-        sectionHead('BOOKING DETAILS');
-        row('Check-in',      fmt(booking.start_date));
-        row('Check-out',     fmt(booking.end_date));
-        row('Duration',      nights + ' night' + (nights !== 1 ? 's' : ''));
-        row('Status',        '✓ Confirmed');
-        y += 4;
-
-        // ── Payment ──
-        sectionHead('PAYMENT');
-        row('Rate per Night',  pricePerNight + ' ' + currency);
-        row('Payment Method',  payMethod);
-        y += 2;
-
-        // Total box
-        doc.setFillColor(255, 249, 248);
-        doc.roundedRect(M, y, W - M * 2, 16, 3, 3, 'F');
-        doc.setDrawColor(235, 103, 83);
-        doc.setLineWidth(0.5);
-        doc.roundedRect(M, y, W - M * 2, 16, 3, 3, 'S');
-        doc.setTextColor(30, 30, 30); doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-        doc.text('TOTAL', M + 6, y + 10);
-        doc.setTextColor(235, 103, 83); doc.setFontSize(15);
-        doc.text(totalFmt, W - M - 6, y + 10, { align: 'right' });
-        y += 26;
-
-        // ── Guest ──
-        sectionHead('GUEST');
-        doc.setTextColor(30, 30, 30); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-        doc.text(booker?.full_name || '—', M, y); y += 6;
-        doc.setTextColor(100, 100, 100); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-        if (booker?.email) { doc.text(booker.email, M, y); y += 6; }
+        // ── Property info ─────────────────────────────────────────
+        doc.setTextColor(22, 22, 22);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text(receiptData.listing_title, M, y);
         y += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(120, 120, 120);
+        doc.text(receiptData.listing_address || 'Rwanda', M, y);
+        y += 12;
 
-        // ── Owner / Host ──
-        if (owner) {
-            sectionHead('HOST CONTACT');
-            doc.setTextColor(30, 30, 30); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-            doc.text(owner.full_name || '—', M, y); y += 6;
-            doc.setTextColor(100, 100, 100); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-            if (owner.email) { doc.text(owner.email, M, y); y += 6; }
-            if (owner.phone) { doc.text(owner.phone, M, y); y += 6; }
-            y += 4;
-        }
+        // ── Stay details box ──────────────────────────────────────
+        doc.setFillColor(250, 250, 250);
+        doc.setDrawColor(232, 232, 232);
+        doc.roundedRect(M, y, W - M * 2, 36, 3, 3, 'FD');
 
-        // ── Footer ──
+        const col1 = M + 8, col2 = W / 2 + 4;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(180, 180, 180);
+        doc.text('CHECK-IN',  col1,   y + 8); doc.text('CHECK-OUT', col2,   y + 8);
+        doc.text('DURATION',  col1,   y + 22); doc.text('PAYMENT METHOD', col2, y + 22);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(22, 22, 22);
+        doc.text(fmt(receiptData.check_in),  col1,  y + 15);
+        doc.text(fmt(receiptData.check_out), col2,  y + 15);
+        doc.text(receiptData.nights + ' night' + (receiptData.nights !== 1 ? 's' : ''), col1, y + 29);
+        doc.text(pmLabel, col2, y + 29);
+        y += 46;
+
+        // ── Price breakdown ───────────────────────────────────────
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(232, 232, 232);
+        doc.roundedRect(M, y, W - M * 2, 54, 3, 3, 'FD');
+
+        const drawLine = (label, value, yy, bold = false, color = [22,22,22]) => {
+            doc.setFont('helvetica', bold ? 'bold' : 'normal');
+            doc.setFontSize(bold ? 10 : 9);
+            doc.setTextColor(...(bold ? [22,22,22] : [100,100,100]));
+            doc.text(label, col1, yy);
+            doc.setTextColor(...color);
+            doc.text(value, W - M - 6, yy, { align: 'right' });
+        };
+        drawLine('Rate per night',  money(receiptData.price_per_night),  y + 12);
+        drawLine('× ' + receiptData.nights + ' nights', '',              y + 12); // already shown
+        drawLine('Subtotal',         money(receiptData.subtotal),        y + 22);
+        drawLine('Platform fee (5%)', money(receiptData.platform_fee),   y + 32, false, [150,150,150]);
+
+        // Divider
+        doc.setDrawColor(235, 103, 83); doc.setLineWidth(0.5);
+        doc.line(col1, y + 37, W - M - 6, y + 37);
+
+        drawLine('TOTAL AMOUNT', money(receiptData.total_amount),        y + 46, true, [235,103,83]);
+        y += 64;
+
+        // ── Guest + Host info ─────────────────────────────────────
+        const boxH = 36;
+        doc.setDrawColor(232, 232, 232); doc.setLineWidth(0.3);
+        doc.roundedRect(M, y, (W - M * 2) / 2 - 4, boxH, 3, 3, 'D');
+        doc.roundedRect(W / 2 + 1, y, (W - M * 2) / 2 - 4, boxH, 3, 3, 'D');
+
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(180,180,180);
+        doc.text('GUEST', M + 6, y + 9);
+        doc.text('HOST', W / 2 + 7, y + 9);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(22,22,22);
+        doc.text(receiptData.guest_name || '—', M + 6, y + 17);
+        doc.text(receiptData.owner_name || '—', W / 2 + 7, y + 17);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(130,130,130);
+        doc.text(receiptData.guest_email || '—', M + 6, y + 24);
+        doc.text(receiptData.guest_phone || '—', M + 6, y + 30);
+        y += boxH + 14;
+
+        // ── Footer ────────────────────────────────────────────────
         const pageH = doc.internal.pageSize.height;
-        doc.setFillColor(248, 249, 250);
+        doc.setFillColor(248, 248, 248);
         doc.rect(0, pageH - 18, W, 18, 'F');
-        doc.setDrawColor(235, 235, 235);
-        doc.line(0, pageH - 18, W, pageH - 18);
-        doc.setTextColor(160, 160, 160); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-        doc.text('This is an official AfriStay booking receipt. © ' + new Date().getFullYear() + ' AfriStay · afristay.rw', W / 2, pageH - 8, { align: 'center' });
+        doc.setDrawColor(235,235,235); doc.line(0, pageH - 18, W, pageH - 18);
+        doc.setTextColor(170,170,170); doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+        doc.text('Official AfriStay receipt · © ' + new Date().getFullYear() + ' AfriStay Ltd · afristay.rw · support@afristay.rw', W / 2, pageH - 8, { align: 'center' });
 
-        doc.save('AfriStay-Receipt-' + receiptNo + '.pdf');
+        doc.save('AfriStay-Receipt-' + receiptData.receipt_number + '.pdf');
         toast('📄 Receipt downloaded!', 'success');
-        console.log('✅ [RECEIPT] PDF generated:', receiptNo);
+        console.log('✅ [RECEIPT] PDF saved:', receiptData.receipt_number);
 
     } catch (err) {
-        console.error('❌ [RECEIPT] Error generating receipt:', err);
+        console.error('❌ [RECEIPT] Error:', err);
         toast('Failed to generate receipt: ' + err.message, 'error');
     }
 };

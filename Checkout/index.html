@@ -509,232 +509,197 @@ function validate() {
   return { name, email, phone: '+250'+rawPh, msisdn: '250'+rawPh };
 }
 
-/* ── Main pay ── */
+/* ── Main pay entry point ── */
 async function pay() {
   hideErr();
   console.log('🚀 [CHECKOUT] Pay clicked — method:', METHOD, '| total:', TOTAL, CUR, '| listing:', LISTING);
 
   const form = validate();
   if (!form) { console.warn('[CHECKOUT] Validation failed'); return; }
-  console.log('✅ [CHECKOUT] Validation passed — guest:', form.name, form.email, form.phone);
+  console.log('✅ [CHECKOUT] Validated — guest:', form.name, form.email, form.phone);
 
-  if (METHOD==='arrival') { await doArrival(form); return; }
+  if (METHOD === 'arrival') { await doArrival(form); return; }
 
-  /* Validate MoMo-specific phone */
-  if (METHOD==='momo') {
-    const mp = $('momoPhone')?.value.trim()||'';
-    if (!mp||mp.length<8) { showErr('Enter the MoMo number to receive the USSD prompt.'); return; }
-    form.momoMsisdn = '250'+mp;
-    console.log('📱 [CHECKOUT] MoMo network:', NETWORK, '| phone:', form.momoMsisdn);
+  /* Collect payment-method-specific data */
+  let paymentData = {};
+  if (METHOD === 'momo' || METHOD === 'momo_mtn' || METHOD === 'momo_airtel') {
+    const mp = $('momoPhone')?.value.trim() || '';
+    if (!mp || mp.length < 8) { showErr('Enter the MoMo number to receive the USSD prompt.'); return; }
+    paymentData = { phone: mp };
+    console.log('📱 [CHECKOUT] MoMo network:', NETWORK, '| phone: 250' + mp.slice(0,3) + '***');
+  } else if (METHOD === 'card') {
+    /* For the new flow we DON'T collect card details in the frontend.
+     * K-Pay handles the card form on their hosted page after owner approves.
+     * We store 'card' as the method and K-Pay charges it when we redirect. */
+    paymentData = { type: 'card_hosted' }; /* hosted by K-Pay */
+  } else if (METHOD === 'spenn') {
+    paymentData = { type: 'spenn' };
   }
 
   const btn = $('payBtn');
   btn.disabled = true;
-  tx('payLabel','Processing...');
+  tx('payLabel', 'Submitting request...');
 
   try {
-    /* ── Step 1: Get auth user ── */
     const sb = window.supabaseClient;
     let uid = null;
     if (sb) {
-      const { data:{ user } } = await sb.auth.getUser().catch(()=>({data:{}}));
-      uid = user?.id||null;
+      const { data: { user } } = await sb.auth.getUser().catch(() => ({ data: {} }));
+      uid = user?.id || null;
     }
-    console.log('👤 [CHECKOUT] User ID:', uid || '(not logged in — guest checkout)');
+    console.log('👤 [CHECKOUT] User ID:', uid || '(guest)');
 
-    /* ── Step 2: Generate unique K-Pay reference ── */
-    const refid = 'AS-'+Date.now()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
-    console.log('🔑 [CHECKOUT] Generated refid:', refid);
+    const actualMethod = METHOD === 'momo' ? ('momo_' + NETWORK) : METHOD;
 
-    /* ── Step 2.5: Check for existing active booking ── */
-    console.log('🔍 [CHECKOUT] Checking for duplicate booking on listing:', LISTING);
-    if (uid) {
-      const { data: dupCheck } = await sb.from('bookings')
-        .select('id, status')
-        .eq('listing_id', LISTING)
-        .eq('user_id', uid)
-        .not('status', 'in', '("cancelled","rejected")')
-        .limit(1);
-      if (dupCheck && dupCheck.length > 0) {
-        console.warn('⚠️ [CHECKOUT] Duplicate blocked — booking:', dupCheck[0].id, 'status:', dupCheck[0].status);
-        throw new Error('You already have an active booking for this listing. Visit your Dashboard to manage it.');
-      }
-    }
-    console.log('✅ [CHECKOUT] No duplicate — proceeding with booking insert');
-
-    /* ── Step 3: Create pending booking in Supabase ── */
-    console.log('💾 [CHECKOUT] Creating pending booking in Supabase...', {
-      listing_id: LISTING, start_date: S_DATE, end_date: E_DATE,
-      total_amount: TOTAL, payment_method: METHOD==='momo' ? ('momo_'+NETWORK) : METHOD,
-    });
-
-    const { data: bk, error: bkErr } = await sb.from('bookings').insert({
-      listing_id:        LISTING,
-      user_id:           uid,
-      start_date:        S_DATE,
-      end_date:          E_DATE,
-      total_amount:      TOTAL,
-      status:            'pending',
-      payment_status:    'pending',
-      payment_method:    METHOD === 'momo' ? ('momo_'+NETWORK) : METHOD,
-      payment_reference: refid,
-      guest_name:        form.name,
-      guest_email:       form.email,
-      guest_phone:       form.phone,
-    }).select('id').single();
-
-    if (bkErr) {
-      console.error('❌ [CHECKOUT] Supabase booking insert failed:', bkErr);
-      throw new Error('Booking creation failed: '+bkErr.message);
-    }
-    console.log('✅ [CHECKOUT] Pending booking created — ID:', bk.id);
-
-    /* ── Step 4: Call Edge Function → K-Pay API ── */
-    const edgeFnUrl = CONFIG.FUNCTIONS_BASE+'/create-kpay-payment';
-    const redirectUrl = window.location.origin+'/Checkout/result/?ref='+encodeURIComponent(refid);
-    const payload = {
-      refid,
-      amount:      TOTAL,
-      currency:    CUR,
-      pmethod:     METHOD==='card' ? 'cc' : METHOD,
-      msisdn:      METHOD==='momo' ? form.momoMsisdn : form.msisdn,
-      email:       form.email,
-      cname:       form.name,
-      cnumber:     bk.id,
-      details:     NIGHTS+' night'+(NIGHTS>1?'s':'')+' at '+TITLE,
-      booking_id:  bk.id,
-      redirecturl: redirectUrl,
-    };
-    console.log('📡 [CHECKOUT] Calling Edge Function:', edgeFnUrl);
-    console.log('📦 [CHECKOUT] K-Pay payload:', { ...payload, msisdn: payload.msisdn?.slice(0,6)+'***' });
-
-    const kpayRes = await fetch(edgeFnUrl, {
-      method: 'POST',
+    console.log('📡 [CHECKOUT] Calling store-payment-intent...');
+    const res = await fetch(CONFIG.FUNCTIONS_BASE + '/store-payment-intent', {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        listing_id:    LISTING,
+        title:         TITLE,
+        start_date:    S_DATE,
+        end_date:      E_DATE,
+        nights:        NIGHTS,
+        price:         PRICE,
+        total_amount:  TOTAL,
+        currency:      CUR,
+        payment_method: actualMethod,
+        payment_data:  paymentData,
+        guest_name:    form.name,
+        guest_email:   form.email,
+        guest_phone:   form.phone,
+        user_id:       uid,
+      }),
     });
 
-    console.log('📬 [CHECKOUT] Edge Function HTTP status:', kpayRes.status);
-    const kpayData = await kpayRes.json();
-    console.log('📬 [CHECKOUT] K-Pay response:', kpayData);
+    const data = await res.json();
+    console.log('📬 [CHECKOUT] store-payment-intent response:', data);
 
-    if (!kpayData.success || !kpayData.url) {
-      /* K-Pay rejected — clean up pending booking */
-      console.warn('⚠️ [CHECKOUT] K-Pay rejected — deleting pending booking:', bk.id);
-      await sb.from('bookings').delete().eq('id', bk.id).catch(e =>
-        console.error('[CHECKOUT] Cleanup delete failed:', e)
-      );
-      throw new Error(kpayData.message || 'K-Pay rejected the request');
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to submit booking request');
     }
 
-    /* ── Step 5: Redirect to K-Pay ── */
-    console.log('↗️ [CHECKOUT] Redirecting to K-Pay checkout:', kpayData.url);
-    console.log('ℹ️ [CHECKOUT] K-Pay TID:', kpayData.tid, '| AuthKey:', kpayData.authkey);
-    $('redirectNote').style.display = 'flex';
-    tx('payLabel','Redirecting...');
-    window.location.href = kpayData.url;
+    console.log('✅ [CHECKOUT] Booking created:', data.booking_id, '— awaiting owner approval');
+    showAwaitingApproval(data.booking_id);
 
-  } catch(err) {
-    console.error('❌ [CHECKOUT] Fatal error:', err);
+  } catch (err) {
+    console.error('❌ [CHECKOUT] Error:', err);
     showErr(err.message || 'Something went wrong. Please try again.');
     const btn = $('payBtn');
-    if(btn) { btn.disabled=false; refreshBtn(); }
-    $('redirectNote').style.display='none';
+    if (btn) { btn.disabled = false; refreshBtn(); }
   }
 }
 
-/* ── Pay on Arrival (no K-Pay involved) ── */
+/* ── Pay on Arrival (no payment stored) ── */
 async function doArrival(form) {
   console.log('🏠 [ARRIVAL] Starting pay-on-arrival reservation...');
-  console.log('🏠 [ARRIVAL] Guest:', form.name, form.email, form.phone);
-  console.log('🏠 [ARRIVAL] Booking:', { listing: LISTING, in: S_DATE, out: E_DATE, nights: NIGHTS, total: TOTAL });
-
   const btn = $('payBtn');
   btn.disabled = true;
-  tx('payLabel','Reserving...');
+  tx('payLabel', 'Reserving...');
   const sb = window.supabaseClient;
 
   try {
-    /* Get user if logged in */
     let uid = null;
-    if(sb) {
-      const { data:{ user } } = await sb.auth.getUser().catch(()=>({data:{}}));
-      uid = user?.id||null;
+    if (sb) {
+      const { data: { user } } = await sb.auth.getUser().catch(() => ({ data: {} }));
+      uid = user?.id || null;
     }
-    console.log('👤 [ARRIVAL] User ID:', uid || '(guest)');
 
-    /* ── Check for existing active booking on this listing ── */
-    console.log('🔍 [ARRIVAL] Checking for duplicate booking...');
-    const { data: existing } = await sb.from('bookings')
-      .select('id, status')
-      .eq('listing_id', LISTING)
-      .eq('user_id', uid)
-      .not('status', 'in', '("cancelled","rejected")')
-      .limit(1);
-    if (existing && existing.length > 0) {
-      console.warn('⚠️ [ARRIVAL] Duplicate booking blocked — existing booking:', existing[0].id, 'status:', existing[0].status);
-      showErr('You already have an active booking for this listing. Check your bookings in the Dashboard.');
-      btn.disabled = false; refreshBtn();
-      return;
+    /* Duplicate check */
+    if (uid) {
+      const { data: dup } = await sb.from('bookings')
+        .select('id,status')
+        .eq('listing_id', LISTING)
+        .eq('user_id', uid)
+        .not('status', 'in', '("cancelled","rejected","payment_failed")')
+        .limit(1);
+      if (dup && dup.length > 0) {
+        showErr('You already have an active booking for this listing. Check your Dashboard.');
+        btn.disabled = false; refreshBtn(); return;
+      }
     }
-    console.log('✅ [ARRIVAL] No duplicate found — proceeding');
 
-    /* Insert booking */
-    const insertPayload = {
+    console.log('💾 [ARRIVAL] Inserting booking...');
+    const { data: bk, error } = await sb.from('bookings').insert({
       listing_id:     LISTING,
       user_id:        uid,
       start_date:     S_DATE,
       end_date:       E_DATE,
       total_amount:   TOTAL,
-      status:         'pending',
+      status:         'awaiting_approval',
       payment_status: 'pending',
       payment_method: 'pay_on_arrival',
       guest_name:     form.name,
       guest_email:    form.email,
       guest_phone:    form.phone,
-    };
-    console.log('💾 [ARRIVAL] Inserting booking into Supabase:', insertPayload);
-
-    const { data: bk, error } = await sb.from('bookings')
-      .insert(insertPayload)
-      .select('id')
-      .single();
+      owner_response_deadline: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+    }).select('id').single();
 
     if (error) {
-      console.error('❌ [ARRIVAL] Supabase insert error:', error);
-      console.error('❌ [ARRIVAL] Error details:', { code: error.code, message: error.message, details: error.details, hint: error.hint });
+      console.error('❌ [ARRIVAL] Insert error:', error);
       throw error;
     }
 
-    console.log('✅ [ARRIVAL] Booking reserved successfully — ID:', bk.id);
-
-    /* Show success */
-    $('mainPage').style.display = 'none';
-    document.body.insertAdjacentHTML('beforeend', `
-      <div style="max-width:520px;margin:120px auto 60px;text-align:center;background:#fff;border-radius:24px;box-shadow:0 2px 28px rgba(0,0,0,.08);padding:52px 36px;font-family:'Sora',sans-serif">
-        <i class="fa-solid fa-circle-check" style="font-size:72px;color:#16a34a;display:block;margin-bottom:20px;animation:pop .5s cubic-bezier(.175,.885,.32,1.275)"></i>
-        <h2 style="font-family:'Playfair Display',serif;font-size:28px;color:#161616;margin-bottom:10px">Booking Reserved! 🏠</h2>
-        <p style="font-size:15px;color:#888;margin-bottom:24px;line-height:1.7">Your stay is reserved at no charge. The host will confirm and you'll pay on arrival.</p>
-        <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:14px 20px;font-size:13px;color:#166534;font-weight:700;margin-bottom:26px">
-          <i class="fa-solid fa-clock" style="margin-right:6px"></i>Pending host confirmation · Booking #${String(bk.id||'').slice(0,8).toUpperCase()}
-        </div>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-          <a href="/Dashboard" style="display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border:2px solid #EB6753;color:#EB6753;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none">
-            <i class="fa-solid fa-gauge"></i> My Bookings
-          </a>
-          <a href="/Listings" style="display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border:2px solid #EB6753;color:#EB6753;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none">
-            <i class="fa-solid fa-magnifying-glass"></i> Browse More
-          </a>
-        </div>
-      </div>
-      <style>@keyframes pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}</style>
-    `);
-  } catch(err) {
-    console.error('❌ [ARRIVAL] Reservation failed:', err);
-    showErr('Reservation failed: '+err.message);
-    btn.disabled=false; refreshBtn();
+    console.log('✅ [ARRIVAL] Reserved:', bk.id);
+    showAwaitingApproval(bk.id, true);
+  } catch (err) {
+    console.error('❌ [ARRIVAL] Error:', err);
+    showErr('Reservation failed: ' + err.message);
+    btn.disabled = false; refreshBtn();
   }
 }
+
+/* ── Show "awaiting approval" confirmation screen ── */
+function showAwaitingApproval(bookingId, isArrival = false) {
+  $('mainPage').style.display = 'none';
+  document.body.insertAdjacentHTML('beforeend', `
+    <div style="max-width:560px;margin:100px auto 60px;text-align:center;background:#fff;
+                border-radius:24px;box-shadow:0 2px 28px rgba(0,0,0,.08);padding:52px 36px;
+                font-family:'Sora',sans-serif;">
+      <div style="width:80px;height:80px;border-radius:50%;background:#fff8f3;border:3px solid #EB6753;
+                  display:flex;align-items:center;justify-content:center;margin:0 auto 22px;
+                  animation:pulse 2s infinite;">
+        <i class="fa-solid fa-hourglass-half" style="font-size:32px;color:#EB6753;"></i>
+      </div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:26px;color:#161616;margin-bottom:10px;">
+        ${isArrival ? 'Reservation Submitted!' : 'Booking Request Sent!'}
+      </h2>
+      <p style="font-size:15px;color:#888;margin-bottom:22px;line-height:1.75;">
+        ${isArrival
+          ? "The host will review your request and confirm within <strong>12 hours</strong>. You'll pay when you arrive."
+          : "Your payment info is stored securely. The host will review and approve within <strong>12 hours</strong>. We'll charge your ${METHOD === 'momo_mtn' || METHOD === 'momo_airtel' ? 'MoMo' : 'card'} only after approval."}
+      </p>
+      <div style="background:#fff8f3;border:1.5px solid #fdd5c4;border-radius:12px;
+                  padding:16px 20px;font-size:13px;color:#9a3412;margin-bottom:22px;line-height:1.8;">
+        <i class="fa-solid fa-bell" style="margin-right:8px;"></i>
+        You'll get an <strong>email notification</strong> once the host responds.<br>
+        If no response in 12 hours, booking auto-cancels and no payment is taken.
+      </div>
+      <div style="background:#f5f5f4;border-radius:11px;padding:12px 18px;
+                  font-size:12px;color:#888;margin-bottom:26px;">
+        Booking ref: <strong style="color:#161616;font-size:13px;">${String(bookingId||'').slice(0,8).toUpperCase()}</strong>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <a href="/Dashboard" style="display:inline-flex;align-items:center;gap:8px;padding:13px 24px;
+           background:#EB6753;color:#fff;border-radius:12px;font-size:14px;font-weight:700;
+           text-decoration:none;transition:all .2s;">
+          <i class="fa-solid fa-gauge"></i> View My Bookings
+        </a>
+        <a href="/Listings" style="display:inline-flex;align-items:center;gap:8px;padding:13px 24px;
+           border:2px solid #EB6753;color:#EB6753;border-radius:12px;font-size:14px;font-weight:700;
+           text-decoration:none;">
+          <i class="fa-solid fa-magnifying-glass"></i> Browse More
+        </a>
+      </div>
+    </div>
+    <style>
+      @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+    </style>
+  `);
+  document.title = 'Request Sent — AfriStay';
+}
+
 
 function showErr(msg) {
   const b=$('errBox'); tx('errMsg',msg);
