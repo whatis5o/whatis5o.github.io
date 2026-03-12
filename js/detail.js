@@ -311,13 +311,15 @@ async function initReviewForm() {
         return;
     }
 
-    // Check if this user has a completed booking for this listing
+    // Check if this user has a confirmed booking whose end_date has passed
+    const today = new Date().toISOString().slice(0, 10);
     const { data: completedBooking } = await _supabase
         .from('bookings')
         .select('id')
         .eq('listing_id', LISTING_ID)
         .eq('user_id', CURRENT_USER.id)
-        .eq('status', 'completed')
+        .in('status', ['confirmed', 'completed'])
+        .lt('end_date', today)
         .maybeSingle();
 
     if (!completedBooking) {
@@ -326,7 +328,7 @@ async function initReviewForm() {
             '<i class="fa-solid fa-lock" style="font-size:22px;color:#ccc;margin-bottom:10px;display:block;"></i>' +
             '<p style="font-weight:700;color:#555;margin:0 0 5px;font-size:14px;">Review not available yet</p>' +
             '<p style="color:#aaa;font-size:13px;margin:0;">Only guests who have completed a ' + noun + ' of this ' + thing + ' can leave a review. ' +
-            (isVeh ? 'Once your rental is marked complete, come back here to share your experience.' : 'Once your stay is marked complete, come back here to share your experience.') +
+            (isVeh ? 'Once your rental period ends, come back here to share your experience.' : 'Once your stay ends, come back here to share your experience.') +
             '</p></div>';
         return;
     }
