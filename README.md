@@ -1,244 +1,68 @@
-# AfriStay Admin Dashboard - Fixed Version 🚀
+# 🌍 AfriStay — Rwanda Property Rental Platform
 
-## What Was Fixed
+**AfriStay** (`afristay.rw`) is a premier property rental platform designed specifically for the Rwandan market. Similar to Airbnb, it connects property owners with guests looking for short-term or long-term stays. 
 
-### Problems in Your Original Code:
-1. ❌ Supabase client wasn't initializing properly
-2. ❌ `config.js` was calling `supabase.createClient()` wrong
-3. ❌ No proper error handling or console logs
-4. ❌ Some tabs weren't showing (missing in HTML or hidden by CSS)
-5. ❌ Quick actions button not working
-
-### What's Fixed Now:
-1. ✅ Proper Supabase initialization with error checking
-2. ✅ Comprehensive console logging for debugging
-3. ✅ All tabs visible and working (Dashboard, Users, Listings, Bookings, Events, Promotions, Messages, Settings)
-4. ✅ Role-based UI that shows/hides tabs based on user role
-5. ✅ Quick actions button working properly
-6. ✅ Better error messages to help you debug
+Built by Josue, Sabin, and Artur under **King Technologies**, AfriStay is the flagship application in the broader **Rwanda App Hub** vision—a unified digital ecosystem targeting Rwanda and the greater East African region.
 
 ---
 
-## 🔧 Setup Instructions
+## 🚀 The Vision
+Our goal is to digitize and simplify the property rental experience in East Africa. By providing a seamless, secure, and locally optimized platform, we empower property owners to monetize their spaces while giving guests reliable, comfortable places to stay.
 
-### Step 1: Update Your HTML
+## 🛠️ How It Works (Current Flow - v3)
+We are currently in the **v3 Testing Phase**. The platform operates in a clean, payment-free testing state so the entire booking lifecycle can be verified end-to-end.
 
-At the **END** of your `admin.html` file, **BEFORE** the closing `</body>` tag, add these scripts in this EXACT order:
+**The Booking Journey:**
+1. **Guest Books:** A guest selects dates and submits a booking request.
+2. **Owner Review:** The property owner receives an automated email to approve or reject the stay.
+3. **Guest Confirmation:** * *Current (Testing):* Once approved, the guest gets a "Confirm Your Stay" email to finalize the booking.
+   * *Future (Live):* Once our payment gateway is approved, this step automatically switches to a payment link.
+4. **Booking Confirmed:** The stay is locked in, and a receipt is generated.
 
-```html
-<!-- 1. Supabase Library FIRST -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<!-- 2. Config (creates supabase client) -->
-<script src="assets/js/config.js"></script>
-
-<!-- 3. Utils -->
-<script src="assets/js/utils.js"></script>
-
-<!-- 4. Admin (main logic) -->
-<script src="assets/js/admin.js"></script>
-```
-
-**IMPORTANT:** Make sure you remove any old script tags and replace them with these.
+> **Note on Payments:** We are integrating **DPO PayGate** as our exclusive payment provider. Our system is built so that the moment DPO merchant approval is granted, we simply add a single security key (`DPO_COMPANY_TOKEN`), and the system instantly upgrades to real financial transactions with zero code changes required.
 
 ---
 
-### Step 2: Update config.js
-
-Open `config.js` and put your **REAL** Supabase credentials:
-
-```javascript
-SUPABASE_URL: "https://xuxzeinufjpplxkerlsd.supabase.co", // ✅ Your URL is correct
-SUPABASE_KEY: "YOUR_REAL_ANON_KEY_HERE" // ⚠️ REPLACE "public-anon-key-goes-here"
-```
-
-**How to find your Supabase Key:**
-1. Go to your Supabase project dashboard
-2. Click "Settings" → "API"
-3. Copy the `anon` `public` key (NOT the service_role key)
-4. Paste it in `config.js`
-
-I've included a sample key in the config.js file, but **you need to use your real one**.
+## 💼 Business Model
+* **Revenue Split:** AfriStay takes a **5% platform fee**, and the property owner keeps **95%**. 
+* **Payouts:** All splits are automatically calculated and recorded in our system. Currently, payouts to owners are handled via manual bank transfers once DPO collects the funds.
 
 ---
 
-### Step 3: Replace Your Files
+## 💻 Under the Hood (For Developers)
 
-Replace these files in your project:
+AfriStay is built to be fast, lightweight, and highly scalable.
 
-```
-assets/js/config.js   ← Use the new config.js
-assets/js/admin.js    ← Use the new admin.js
-assets/js/utils.js    ← Use the new utils.js
-```
+### Core Tech Stack
+* **Frontend:** Vanilla HTML / CSS / JS (Hosted on AOS.rw via cPanel public_html)
+* **Backend:** [Supabase](https://supabase.com/) (PostgreSQL + Auth + Edge Functions)
+* **Email Processing:** Brevo Transactional API (`bookings@afristay.rw`)
+* **Payments:** DPO PayGate (API v6 - XML-based)
+* **SMS:** Twilio (Currently on standby)
 
----
+### Supabase Edge Functions (Deno / TypeScript)
+All server-side logic is handled via standalone, serverless Edge Functions. 
+* `store-booking`: Handles guest checkout, creates the booking record, and alerts the owner.
+* `approve-booking`: Processes owner approval and emails the guest (auto-detects DPO status).
+* `reject-booking`: Processes owner rejection and notifies the guest.
+* `confirm-booking`: Finalizes the stay and records the 5%/95% payout split in the database.
+* `dpo-create-token`: Generates the DPO payment token (active once DPO is live).
+* `dpo-webhook`: Listens for DPO IPN callbacks to confirm payments and email receipts.
+* `generate-receipt`: Creates PDF/digital receipts for the booking.
+* `send-sms`: Standby function for Twilio SMS notifications.
 
-## 🎯 How It Works Now
-
-### Authentication Flow:
-
-1. Page loads → Scripts load in order
-2. Config.js creates Supabase client
-3. Admin.js initializes:
-   - Checks authentication
-   - Loads user profile
-   - Detects user role (admin/owner/user)
-   - Shows/hides tabs based on role
-   - Loads data from Supabase
-
-### Role-Based Features:
-
-**Admin (👑):**
-- Sees ALL tabs
-- Can manage users, listings, bookings, events, promotions, messages
-- Quick actions: Add Listing, Add Promotion, Add Event, Add User
-
-**Owner (🏠):**
-- Sees: Dashboard, Listings, Bookings, Messages, Settings
-- Can create/manage their own listings
-- Can approve bookings for their listings
-- Quick actions: Add Listing only
-
-**User (👤):**
-- Sees: Dashboard, Bookings, Messages, Settings
-- Can view their own bookings
-- No quick actions
-
-**Not Logged In (🚫):**
-- Sees: Dashboard, Listings, Settings (limited)
-- Everything is read-only
+### 📝 Development Guidelines & Coding Style
+* **No Partial Snippets:** All codebase updates must be complete, ready-to-use files.
+* **Self-Contained Logic:** Edge functions do not use shared imports. Every function is entirely self-contained for maximum reliability and easy debugging.
+* **Inline HTML:** Brevo email HTML templates are written directly inline inside their respective Edge Functions.
 
 ---
 
-## 🐛 Debugging
-
-Open your browser console (F12) and you'll see helpful logs like:
-
-```
-🚀 [CONFIG] Loading AfriStay configuration...
-✅ [CONFIG] Supabase client created successfully!
-🔗 [CONFIG] Connected to: https://xuxzeinufjpplxkerlsd.supabase.co
-✅ [CONFIG] Connection test successful! Profile count: 5
-
-🚀 [ADMIN] Loading admin.js...
-🔄 [ADMIN] Reparenting modals and quick actions...
-🎛️ [ADMIN] Binding UI interactions...
-🔐 [AUTH] Initializing authentication...
-✅ [AUTH] User authenticated: admin@example.com
-✅ [AUTH] Profile loaded. Role: admin
-🎭 [ROLE] Applying role-based UI for: admin
-  👁️ Showing tab: users
-  👁️ Showing tab: events
-  👁️ Showing tab: promotions
-
-📊 [DATA] Loading all data...
-🔢 [COUNTS] Loading dashboard counts...
-✅ [COUNTS] Dashboard counts updated
-📋 [LISTINGS] Loading listings table...
-  Found 12 listings
-✅ [LISTINGS] Table populated
-
-✨ [ADMIN] Initialization complete!
-```
-
-### Common Errors:
-
-**Error:** `Cannot read properties of undefined (reading 'getUser')`
-**Fix:** Supabase client not initialized. Check that:
-- Supabase CDN script loads first
-- Config.js has real credentials
-- Window.supabaseClient exists
-
-**Error:** `_supabase.from is not a function`
-**Fix:** Same as above - client not created properly
-
-**Error:** `Supabase library not found`
-**Fix:** Add the Supabase CDN script: `<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>`
+## 📋 Pending Milestones & Roadmap
+- [ ] **DPO Merchant Approval:** Pending submission of company registration docs, bank letters, and finalizing Privacy Policy / T&C pages.
+- [ ] **Email Verification (Brevo):** Verify the domain to remove the `brevosend.com` subdomain from outbound transactional emails.
+- [ ] **Supabase SMTP Setup:** Configure custom SMTP so automated Auth emails (password resets, confirmations) send properly from `bookings@afristay.rw`.
+- [ ] **Rwanda App Hub Integration:** Begin laying the groundwork to connect AfriStay to our future unified digital ecosystem.
 
 ---
-
-## 📋 Console Logs Explained
-
-| Emoji | Meaning |
-|-------|---------|
-| 🚀    | Loading/Starting |
-| ✅    | Success |
-| ❌    | Error |
-| ⚠️    | Warning |
-| 👁️    | Showing UI element |
-| 🙈    | Hiding UI element |
-| 🔐    | Authentication |
-| 📊    | Data loading |
-| 🎯    | Configuration |
-| 💬    | Messages |
-| 👥    | Users |
-| 📋    | Listings |
-| 📅    | Bookings |
-
----
-
-## 🎨 Features
-
-### Working Now:
-- ✅ All navigation tabs
-- ✅ Role-based UI
-- ✅ Dashboard with counts
-- ✅ Listings management
-- ✅ Bookings management
-- ✅ User management (admin only)
-- ✅ Messages preview
-- ✅ Quick actions button
-- ✅ Mobile responsive sidebar
-- ✅ Modal system
-- ✅ Table filtering
-
-### Demo Mode:
-When `DEMO_MODE = true` in admin.js:
-- You can mark bookings as "paid" without real payment
-- Useful for testing the flow
-
-Set `DEMO_MODE = false` for production.
-
----
-
-## 🆘 Still Having Issues?
-
-1. **Check Browser Console** (F12) - It will tell you exactly what's wrong
-2. **Verify Supabase Credentials** - Make sure your anon key is correct
-3. **Check Script Order** - Supabase CDN must load before config.js
-4. **Check Database** - Make sure your tables exist (profiles, listings, bookings, etc.)
-5. **Check RLS Policies** - Make sure your Row Level Security policies allow your user to read data
-
----
-
-## 📁 File Structure
-
-```
-admin.html           ← Your main HTML file
-assets/
-  css/
-    admin.css       ← Your styles
-  js/
-    config.js       ← Supabase setup (REPLACE THIS)
-    utils.js        ← Helper functions (REPLACE THIS)
-    admin.js        ← Main logic (REPLACE THIS)
-```
-
----
-
-## 🎉 You're All Set!
-
-Open `admin.html` in your browser and check the console. You should see:
-1. Green checkmarks (✅) for successful operations
-2. All tabs visible based on your role
-3. Data loading from Supabase
-4. Quick actions button working
-
-If you see any red X marks (❌), the console will tell you exactly what to fix!
-
----
-
-**Made with 💪 for vibe coders**
-
-change booking architecture to request first then approves receive email click link pay and receive email with receipt
+*Built with ❤️ in Rwanda by King Technologies.*
